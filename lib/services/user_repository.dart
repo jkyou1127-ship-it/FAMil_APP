@@ -39,6 +39,10 @@ class UserRepository {
     });
   }
 
+  Future<void> setSleepMusicEnabled(String uid, bool enabled) {
+    return _users.doc(uid).update({'sleepMusicEnabled': enabled});
+  }
+
   Future<void> setOnline(String uid, bool online) {
     return _users.doc(uid).update({'isOnline': online});
   }

@@ -80,5 +80,43 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if isAdmin();
     }
+
+    // 온라인 매신저
+    match /chats/{chatId} {
+      allow read, update: if isSignedIn() &&
+        request.auth.uid in resource.data.participants;
+      allow create: if isSignedIn() &&
+        request.auth.uid in request.resource.data.participants;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow create: if isSignedIn() &&
+          request.resource.data.senderUid == request.auth.uid &&
+          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+      }
+    }
+
+    // 추첨 시스템: 기록은 모두가 볼 수 있고, 로그인한 사용자는 누구나 추첨을 만들 수 있다.
+    match /draws/{drawId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.createdByUid == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // 취침/기상 기록
+    match /sleepSessions/{sessionId} {
+      allow read, create, update, delete: if isSignedIn() &&
+        (resource == null || resource.data.uid == request.auth.uid) &&
+        (request.resource == null || request.resource.data.uid == request.auth.uid);
+    }
+
+    // 알람
+    match /alarms/{alarmId} {
+      allow read, create, update, delete: if isSignedIn() &&
+        (resource == null || resource.data.uid == request.auth.uid) &&
+        (request.resource == null || request.resource.data.uid == request.auth.uid);
+    }
   }
 }

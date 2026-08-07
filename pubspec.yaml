@@ -46,6 +46,16 @@ dependencies:
   # 날짜/시간 포맷 (한국표준시 표시용)
   intl: ^0.20.2
 
+  # 알람/수면유도 노래 재생
+  audioplayers: ^6.1.0
+
+  # 알람 로컬 알림 예약 (백그라운드 보조)
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
+
+  # 알람음 직접 선택(파일 선택)
+  file_picker: ^8.1.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -68,10 +78,8 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/sounds/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

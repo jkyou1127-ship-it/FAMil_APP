@@ -31,6 +31,9 @@ class AppUser {
   final bool isSleeping;
   final DateTime? sleepStartedAt;
 
+  /// 수면유도 노래 재생 여부 설정. off로 바꾸면 다시 on으로 바꾸기 전까지 유지된다.
+  final bool sleepMusicEnabled;
+
   final String? profilePhotoUrl;
   final DateTime? createdAt;
 
@@ -44,6 +47,7 @@ class AppUser {
     this.accessOpen = true,
     this.isSleeping = false,
     this.sleepStartedAt,
+    this.sleepMusicEnabled = true,
     this.profilePhotoUrl,
     this.createdAt,
   });
@@ -62,6 +66,7 @@ class AppUser {
       accessOpen: map['accessOpen'] as bool? ?? true,
       isSleeping: map['isSleeping'] as bool? ?? false,
       sleepStartedAt: (map['sleepStartedAt'] as Timestamp?)?.toDate(),
+      sleepMusicEnabled: map['sleepMusicEnabled'] as bool? ?? true,
       profilePhotoUrl: map['profilePhotoUrl'] as String?,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
     );
@@ -78,6 +83,7 @@ class AppUser {
       'isSleeping': isSleeping,
       'sleepStartedAt':
           sleepStartedAt != null ? Timestamp.fromDate(sleepStartedAt!) : null,
+      'sleepMusicEnabled': sleepMusicEnabled,
       'profilePhotoUrl': profilePhotoUrl,
       'createdAt':
           createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
