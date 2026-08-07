@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/json_time.dart';
 
 class TodoItem {
   final String id;
@@ -17,26 +17,14 @@ class TodoItem {
     this.doneAt,
   });
 
-  factory TodoItem.fromMap(String id, Map<String, dynamic> map) {
+  factory TodoItem.fromJson(Map<String, dynamic> json) {
     return TodoItem(
-      id: id,
-      uid: map['uid'] as String? ?? '',
-      text: map['text'] as String? ?? '',
-      done: map['done'] as bool? ?? false,
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
-      doneAt: (map['doneAt'] as Timestamp?)?.toDate(),
+      id: json['id'] as String,
+      uid: json['uid'] as String? ?? '',
+      text: json['text'] as String? ?? '',
+      done: json['done'] as bool? ?? false,
+      createdAt: parseTime(json['createdAt']),
+      doneAt: parseTime(json['doneAt']),
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'uid': uid,
-      'text': text,
-      'done': done,
-      'createdAt': createdAt != null
-          ? Timestamp.fromDate(createdAt!)
-          : FieldValue.serverTimestamp(),
-      'doneAt': doneAt != null ? Timestamp.fromDate(doneAt!) : null,
-    };
   }
 }

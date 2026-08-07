@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/json_time.dart';
 
 enum KnockStatus { pending, approved, denied }
 
@@ -38,35 +38,18 @@ class Knock {
     this.requesterAcknowledged = false,
   });
 
-  factory Knock.fromMap(String id, Map<String, dynamic> map) {
+  factory Knock.fromJson(Map<String, dynamic> json) {
     return Knock(
-      id: id,
-      roomId: map['roomId'] as String? ?? '',
-      roomName: map['roomName'] as String? ?? '',
-      requesterUid: map['requesterUid'] as String? ?? '',
-      requesterName: map['requesterName'] as String? ?? '',
-      ownerUid: map['ownerUid'] as String? ?? '',
-      status: knockStatusFromString(map['status'] as String? ?? 'pending'),
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
-      respondedAt: (map['respondedAt'] as Timestamp?)?.toDate(),
-      requesterAcknowledged: map['requesterAcknowledged'] as bool? ?? false,
+      id: json['id'] as String,
+      roomId: json['roomId'] as String? ?? '',
+      roomName: json['roomName'] as String? ?? '',
+      requesterUid: json['requesterUid'] as String? ?? '',
+      requesterName: json['requesterName'] as String? ?? '',
+      ownerUid: json['ownerUid'] as String? ?? '',
+      status: knockStatusFromString(json['status'] as String? ?? 'pending'),
+      createdAt: parseTime(json['createdAt']),
+      respondedAt: parseTime(json['respondedAt']),
+      requesterAcknowledged: json['requesterAcknowledged'] as bool? ?? false,
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'roomId': roomId,
-      'roomName': roomName,
-      'requesterUid': requesterUid,
-      'requesterName': requesterName,
-      'ownerUid': ownerUid,
-      'status': status.name,
-      'createdAt': createdAt != null
-          ? Timestamp.fromDate(createdAt!)
-          : FieldValue.serverTimestamp(),
-      'respondedAt':
-          respondedAt != null ? Timestamp.fromDate(respondedAt!) : null,
-      'requesterAcknowledged': requesterAcknowledged,
-    };
   }
 }

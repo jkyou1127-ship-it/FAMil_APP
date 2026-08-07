@@ -1,26 +1,25 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../models/suggestion.dart';
+import 'api_client.dart';
+import 'live_query.dart';
 
 class SuggestionRepository {
-  SuggestionRepository({FirebaseFirestore? firestore})
-      : _db = firestore ?? FirebaseFirestore.instance;
+  SuggestionRepository({ApiClient? api}) : _api = api ?? ApiClient.instance;
 
-  final FirebaseFirestore _db;
+  final ApiClient _api;
 
-  CollectionReference<Map<String, dynamic>> get _suggestions =>
-      _db.collection('suggestions');
+  Future<List<Suggestion>> _fetchAll() async {
+    final res = await _api.get('/suggestions');
+    return (res['suggestions'] as List)
+        .map((e) => Suggestion.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
 
   /// 모두가 볼 수 있는 익명 건의사항 목록(실시간).
   Stream<List<Suggestion>> watchAll() {
-    return _suggestions
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snap) =>
-            snap.docs.map((d) => Suggestion.fromMap(d.id, d.data())).toList());
+    return watchLive(fetch: _fetchAll, event: 'suggestions:changed');
   }
 
   Future<void> submit(String text) {
-    return _suggestions.add(Suggestion(id: '', text: text).toMap());
+    return _api.post('/suggestions', body: {'text': text});
   }
 }

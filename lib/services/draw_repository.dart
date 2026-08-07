@@ -1,26 +1,25 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../models/draw_event.dart';
+import 'api_client.dart';
+import 'live_query.dart';
 
 class DrawRepository {
-  DrawRepository({FirebaseFirestore? firestore})
-      : _db = firestore ?? FirebaseFirestore.instance;
+  DrawRepository({ApiClient? api}) : _api = api ?? ApiClient.instance;
 
-  final FirebaseFirestore _db;
-
-  CollectionReference<Map<String, dynamic>> get _draws =>
-      _db.collection('draws');
+  final ApiClient _api;
 
   Stream<List<DrawEvent>> watchHistory() {
-    return _draws
-        .orderBy('createdAt', descending: true)
-        .limit(50)
-        .snapshots()
-        .map((snap) =>
-            snap.docs.map((d) => DrawEvent.fromMap(d.id, d.data())).toList());
+    return watchLive(
+      fetch: () async {
+        final res = await _api.get('/draws');
+        return (res['draws'] as List)
+            .map((e) => DrawEvent.fromJson(e as Map<String, dynamic>))
+            .toList();
+      },
+      event: 'draws:changed',
+    );
   }
 
   Future<void> saveDraw(DrawEvent event) {
-    return _draws.add(event.toMap());
+    return _api.post('/draws', body: event.toJson());
   }
 }

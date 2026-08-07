@@ -1,25 +1,22 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../models/sleep_session.dart';
+import 'api_client.dart';
+import 'live_query.dart';
 
 class SleepRepository {
-  SleepRepository({FirebaseFirestore? firestore})
-      : _db = firestore ?? FirebaseFirestore.instance;
+  SleepRepository({ApiClient? api}) : _api = api ?? ApiClient.instance;
 
-  final FirebaseFirestore _db;
-
-  CollectionReference<Map<String, dynamic>> get _sessions =>
-      _db.collection('sleepSessions');
+  final ApiClient _api;
 
   Stream<List<SleepSession>> watchMySessions(String uid) {
-    return _sessions
-        .where('uid', isEqualTo: uid)
-        .orderBy('wokeAt', descending: true)
-        .limit(30)
-        .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => SleepSession.fromMap(d.id, d.data()))
-            .toList());
+    return watchLive(
+      fetch: () async {
+        final res = await _api.get('/sleep-sessions');
+        return (res['sessions'] as List)
+            .map((e) => SleepSession.fromJson(e as Map<String, dynamic>))
+            .toList();
+      },
+      event: 'sleep:changed',
+    );
   }
 
   Future<void> saveSession({
@@ -27,11 +24,9 @@ class SleepRepository {
     required DateTime sleptAt,
     required DateTime wokeAt,
   }) {
-    return _sessions.add(SleepSession(
-      id: '',
-      uid: uid,
-      sleptAt: sleptAt,
-      wokeAt: wokeAt,
-    ).toMap());
+    return _api.post('/sleep-sessions', body: {
+      'sleptAt': sleptAt.toUtc().toIso8601String(),
+      'wokeAt': wokeAt.toUtc().toIso8601String(),
+    });
   }
 }

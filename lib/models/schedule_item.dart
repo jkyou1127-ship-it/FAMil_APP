@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/json_time.dart';
 
 /// 일정: 특정 날(년/월/일)에 해야 할 일을 알려주는 항목.
 class ScheduleItem {
@@ -22,28 +22,15 @@ class ScheduleItem {
     this.createdAt,
   });
 
-  factory ScheduleItem.fromMap(String id, Map<String, dynamic> map) {
+  factory ScheduleItem.fromJson(Map<String, dynamic> json) {
     return ScheduleItem(
-      id: id,
-      uid: map['uid'] as String? ?? '',
-      ownerName: map['ownerName'] as String? ?? '',
-      date: map['date'] as String? ?? '',
-      title: map['title'] as String? ?? '',
-      memo: map['memo'] as String?,
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
+      id: json['id'] as String,
+      uid: json['uid'] as String? ?? '',
+      ownerName: json['ownerName'] as String? ?? '',
+      date: json['date'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      memo: json['memo'] as String?,
+      createdAt: parseTime(json['createdAt']),
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'uid': uid,
-      'ownerName': ownerName,
-      'date': date,
-      'title': title,
-      'memo': memo,
-      'createdAt': createdAt != null
-          ? Timestamp.fromDate(createdAt!)
-          : FieldValue.serverTimestamp(),
-    };
   }
 }

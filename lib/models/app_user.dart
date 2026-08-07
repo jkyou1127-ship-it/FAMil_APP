@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/json_time.dart';
 
 /// 사용자 권한.
 /// - admin: 시스템 전체를 관리하는 계정, 딱 1명만 존재한다("첫" 계정이 관리자가 된다).
@@ -55,38 +55,20 @@ class AppUser {
   bool get isAdmin => role == UserRole.admin;
   bool get isRoomOwner => roomId != null;
 
-  factory AppUser.fromMap(String uid, Map<String, dynamic> map) {
+  factory AppUser.fromJson(Map<String, dynamic> json) {
     return AppUser(
-      uid: uid,
-      email: map['email'] as String? ?? '',
-      displayName: map['displayName'] as String? ?? '',
-      role: userRoleFromString(map['role'] as String? ?? 'member'),
-      roomId: map['roomId'] as String?,
-      isOnline: map['isOnline'] as bool? ?? false,
-      accessOpen: map['accessOpen'] as bool? ?? true,
-      isSleeping: map['isSleeping'] as bool? ?? false,
-      sleepStartedAt: (map['sleepStartedAt'] as Timestamp?)?.toDate(),
-      sleepMusicEnabled: map['sleepMusicEnabled'] as bool? ?? true,
-      profilePhotoUrl: map['profilePhotoUrl'] as String?,
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
+      uid: json['uid'] as String,
+      email: json['email'] as String? ?? '',
+      displayName: json['displayName'] as String? ?? '',
+      role: userRoleFromString(json['role'] as String? ?? 'member'),
+      roomId: json['roomId'] as String?,
+      isOnline: json['isOnline'] as bool? ?? false,
+      accessOpen: json['accessOpen'] as bool? ?? true,
+      isSleeping: json['isSleeping'] as bool? ?? false,
+      sleepStartedAt: parseTime(json['sleepStartedAt']),
+      sleepMusicEnabled: json['sleepMusicEnabled'] as bool? ?? true,
+      profilePhotoUrl: json['profilePhotoUrl'] as String?,
+      createdAt: parseTime(json['createdAt']),
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'email': email,
-      'displayName': displayName,
-      'role': role.name,
-      'roomId': roomId,
-      'isOnline': isOnline,
-      'accessOpen': accessOpen,
-      'isSleeping': isSleeping,
-      'sleepStartedAt':
-          sleepStartedAt != null ? Timestamp.fromDate(sleepStartedAt!) : null,
-      'sleepMusicEnabled': sleepMusicEnabled,
-      'profilePhotoUrl': profilePhotoUrl,
-      'createdAt':
-          createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
-    };
   }
 }

@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/json_time.dart';
 
 class ChatMessage {
   final String id;
@@ -13,21 +13,13 @@ class ChatMessage {
     this.createdAt,
   });
 
-  factory ChatMessage.fromMap(String id, Map<String, dynamic> map) {
+  factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
-      id: id,
-      senderUid: map['senderUid'] as String? ?? '',
-      text: map['text'] as String? ?? '',
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
+      id: json['id'] as String,
+      senderUid: json['senderUid'] as String? ?? '',
+      text: json['text'] as String? ?? '',
+      createdAt: parseTime(json['createdAt']),
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'senderUid': senderUid,
-      'text': text,
-      'createdAt': FieldValue.serverTimestamp(),
-    };
   }
 }
 
@@ -65,18 +57,18 @@ class ChatSummary {
     return lastMessageAt!.isAfter(read);
   }
 
-  factory ChatSummary.fromMap(String id, Map<String, dynamic> map) {
-    final rawLastRead = (map['lastReadAt'] as Map<String, dynamic>?) ?? {};
+  factory ChatSummary.fromJson(Map<String, dynamic> json) {
+    final rawLastRead = (json['lastReadAt'] as Map?) ?? {};
     return ChatSummary(
-      id: id,
-      participants: List<String>.from(map['participants'] as List? ?? []),
-      participantNames: Map<String, String>.from(
-          map['participantNames'] as Map? ?? {}),
-      lastMessage: map['lastMessage'] as String? ?? '',
-      lastMessageAt: (map['lastMessageAt'] as Timestamp?)?.toDate(),
-      lastSenderUid: map['lastSenderUid'] as String?,
+      id: json['id'] as String,
+      participants: List<String>.from(json['participants'] as List? ?? []),
+      participantNames:
+          Map<String, String>.from(json['participantNames'] as Map? ?? {}),
+      lastMessage: json['lastMessage'] as String? ?? '',
+      lastMessageAt: parseTime(json['lastMessageAt']),
+      lastSenderUid: json['lastSenderUid'] as String?,
       lastReadAt: rawLastRead.map(
-          (key, value) => MapEntry(key, (value as Timestamp).toDate())),
+          (key, value) => MapEntry(key as String, parseTime(value)!)),
     );
   }
 }

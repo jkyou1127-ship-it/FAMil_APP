@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/json_time.dart';
 
 /// 취침~기상 세션 이력 (잔 시간 계산용).
 class SleepSession {
@@ -16,22 +16,12 @@ class SleepSession {
 
   Duration get duration => wokeAt.difference(sleptAt);
 
-  factory SleepSession.fromMap(String id, Map<String, dynamic> map) {
+  factory SleepSession.fromJson(Map<String, dynamic> json) {
     return SleepSession(
-      id: id,
-      uid: map['uid'] as String? ?? '',
-      sleptAt: (map['sleptAt'] as Timestamp).toDate(),
-      wokeAt: (map['wokeAt'] as Timestamp).toDate(),
+      id: json['id'] as String,
+      uid: json['uid'] as String? ?? '',
+      sleptAt: parseTime(json['sleptAt'])!,
+      wokeAt: parseTime(json['wokeAt'])!,
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'uid': uid,
-      'sleptAt': Timestamp.fromDate(sleptAt),
-      'wokeAt': Timestamp.fromDate(wokeAt),
-      'durationMinutes': duration.inMinutes,
-      'createdAt': FieldValue.serverTimestamp(),
-    };
   }
 }

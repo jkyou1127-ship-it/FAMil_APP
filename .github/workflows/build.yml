@@ -8,10 +8,24 @@ on:
 
 env:
   FLUTTER_VERSION: "3.44.9"
+  NODE_VERSION: "22"
 
 jobs:
+  server-test:
+    name: Backend server test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm install
+        working-directory: server
+      - run: npm test
+        working-directory: server
+
   analyze:
-    name: Analyze & Test
+    name: Flutter analyze & test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,8 +52,6 @@ jobs:
           distribution: temurin
           java-version: "17"
       - run: flutter pub get
-      # firebase_options.dart는 자리표시자 값입니다. 실제 배포용 APK를 만들려면
-      # 저장소 secrets에 실제 Firebase 설정을 넣고 이 단계 이전에 파일을 교체하세요.
       - run: flutter build apk --debug
       - uses: actions/upload-artifact@v4
         with:

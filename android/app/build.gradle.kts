@@ -19,7 +19,6 @@ android {
         applicationId = "com.famil.famil_app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        // Firebase Auth/Firestore Android SDK가 minSdk 23 이상을 요구한다.
         minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

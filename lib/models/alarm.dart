@@ -46,26 +46,25 @@ class Alarm {
   String get timeLabel =>
       '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
 
-  factory Alarm.fromMap(String id, Map<String, dynamic> map) {
+  factory Alarm.fromJson(Map<String, dynamic> json) {
     return Alarm(
-      id: id,
-      uid: map['uid'] as String? ?? '',
-      label: map['label'] as String? ?? '알람',
-      hour: map['hour'] as int? ?? 7,
-      minute: map['minute'] as int? ?? 0,
-      repeat: alarmRepeatFromString(map['repeat'] as String? ?? 'once'),
+      id: json['id'] as String,
+      uid: json['uid'] as String? ?? '',
+      label: json['label'] as String? ?? '알람',
+      hour: json['hour'] as int? ?? 7,
+      minute: json['minute'] as int? ?? 0,
+      repeat: alarmRepeatFromString(json['repeat'] as String? ?? 'once'),
       weekdays: Set<int>.from(
-          (map['weekdays'] as List?)?.map((e) => e as int) ?? const []),
-      onceDate: map['onceDate'] as String?,
-      soundId: map['soundId'] as String? ?? 'alarm_classic',
-      customSoundPath: map['customSoundPath'] as String?,
-      enabled: map['enabled'] as bool? ?? true,
+          (json['weekdays'] as List?)?.map((e) => e as int) ?? const []),
+      onceDate: json['onceDate'] as String?,
+      soundId: json['soundId'] as String? ?? 'alarm_classic',
+      customSoundPath: json['customSoundPath'] as String?,
+      enabled: json['enabled'] as bool? ?? true,
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
-      'uid': uid,
       'label': label,
       'hour': hour,
       'minute': minute,

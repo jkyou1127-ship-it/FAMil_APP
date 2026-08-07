@@ -1,7 +1,8 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../../services/auth_service.dart';
+import '../../app_session.dart';
+import '../../services/api_client.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -15,7 +16,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = AuthService();
 
   bool _loading = false;
   String? _error;
@@ -35,11 +35,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _error = null;
     });
     try {
-      final user = await _authService.signUp(
-        email: _emailController.text,
-        password: _passwordController.text,
-        displayName: _nameController.text,
-      );
+      final user = await context.read<AppSession>().signUp(
+            email: _emailController.text,
+            password: _passwordController.text,
+            displayName: _nameController.text,
+          );
       if (!mounted) return;
       if (user.isAdmin) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -47,25 +47,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         );
       }
       Navigator.of(context).pop();
-    } on FirebaseAuthException catch (e) {
-      setState(() => _error = _messageFor(e));
+    } on ApiException catch (e) {
+      setState(() => _error = e.message);
     } catch (e) {
       setState(() => _error = '회원가입에 실패했습니다: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  String _messageFor(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'email-already-in-use':
-        return '이미 사용 중인 이메일입니다.';
-      case 'weak-password':
-        return '비밀번호가 너무 약합니다.';
-      case 'invalid-email':
-        return '이메일 형식이 올바르지 않습니다.';
-      default:
-        return '회원가입 실패: ${e.message ?? e.code}';
     }
   }
 

@@ -17,22 +17,13 @@ class Room {
     this.knockEnabled = true,
   });
 
-  factory Room.fromMap(String id, Map<String, dynamic> map) {
+  factory Room.fromJson(Map<String, dynamic> json) {
     return Room(
-      id: id,
-      name: map['name'] as String? ?? '',
-      ownerUid: map['ownerUid'] as String?,
-      ownerName: map['ownerName'] as String?,
-      knockEnabled: map['knockEnabled'] as bool? ?? true,
+      id: json['id'] as String,
+      name: json['name'] as String? ?? '',
+      ownerUid: json['ownerUid'] as String?,
+      ownerName: json['ownerName'] as String?,
+      knockEnabled: json['knockEnabled'] as bool? ?? true,
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'ownerUid': ownerUid,
-      'ownerName': ownerName,
-      'knockEnabled': knockEnabled,
-    };
   }
 }

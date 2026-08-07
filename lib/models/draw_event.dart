@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/json_time.dart';
 
 /// 추첨 시스템: 현재 인원 중 무작위로 한 명을 뽑은 기록.
 class DrawEvent {
@@ -22,29 +22,26 @@ class DrawEvent {
     this.createdAt,
   });
 
-  factory DrawEvent.fromMap(String id, Map<String, dynamic> map) {
+  factory DrawEvent.fromJson(Map<String, dynamic> json) {
     return DrawEvent(
-      id: id,
-      title: map['title'] as String?,
-      participantUids: List<String>.from(map['participantUids'] as List? ?? []),
-      participantNames:
-          List<String>.from(map['participantNames'] as List? ?? []),
-      winnerUid: map['winnerUid'] as String? ?? '',
-      winnerName: map['winnerName'] as String? ?? '',
-      createdByUid: map['createdByUid'] as String? ?? '',
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
+      id: json['id'] as String,
+      title: json['title'] as String?,
+      participantUids: List<String>.from(json['participantUids'] as List? ?? []),
+      participantNames: List<String>.from(json['participantNames'] as List? ?? []),
+      winnerUid: json['winnerUid'] as String? ?? '',
+      winnerName: json['winnerName'] as String? ?? '',
+      createdByUid: json['createdByUid'] as String? ?? '',
+      createdAt: parseTime(json['createdAt']),
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
       'title': title,
       'participantUids': participantUids,
       'participantNames': participantNames,
       'winnerUid': winnerUid,
       'winnerName': winnerName,
-      'createdByUid': createdByUid,
-      'createdAt': FieldValue.serverTimestamp(),
     };
   }
 }

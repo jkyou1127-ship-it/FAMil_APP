@@ -1,35 +1,32 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../models/schedule_item.dart';
+import 'api_client.dart';
+import 'live_query.dart';
 
 class ScheduleRepository {
-  ScheduleRepository({FirebaseFirestore? firestore})
-      : _db = firestore ?? FirebaseFirestore.instance;
+  ScheduleRepository({ApiClient? api}) : _api = api ?? ApiClient.instance;
 
-  final FirebaseFirestore _db;
+  final ApiClient _api;
 
-  CollectionReference<Map<String, dynamic>> get _schedules =>
-      _db.collection('schedules');
+  Future<List<ScheduleItem>> _fetch({String? uid, String? date}) async {
+    final res = await _api.get('/schedules', query: {
+      if (uid != null) 'uid': uid,
+      if (date != null) 'date': date,
+    });
+    return (res['schedules'] as List)
+        .map((e) => ScheduleItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
 
   Stream<List<ScheduleItem>> watchMySchedules(String uid) {
-    return _schedules
-        .where('uid', isEqualTo: uid)
-        .orderBy('date')
-        .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => ScheduleItem.fromMap(d.id, d.data()))
-            .toList());
+    return watchLive(fetch: () => _fetch(uid: uid), event: 'schedules:changed');
   }
 
   /// 특정 날짜('yyyy/MM/dd')에 사용자가 가진 일정 (상태창 표시용).
   Stream<List<ScheduleItem>> watchScheduleForDate(String uid, String date) {
-    return _schedules
-        .where('uid', isEqualTo: uid)
-        .where('date', isEqualTo: date)
-        .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => ScheduleItem.fromMap(d.id, d.data()))
-            .toList());
+    return watchLive(
+      fetch: () => _fetch(uid: uid, date: date),
+      event: 'schedules:changed',
+    );
   }
 
   Future<void> addSchedule({
@@ -39,17 +36,14 @@ class ScheduleRepository {
     required String title,
     String? memo,
   }) {
-    return _schedules.add(ScheduleItem(
-      id: '',
-      uid: uid,
-      ownerName: ownerName,
-      date: date,
-      title: title,
-      memo: memo,
-    ).toMap());
+    return _api.post('/schedules', body: {
+      'date': date,
+      'title': title,
+      'memo': memo,
+    });
   }
 
   Future<void> deleteSchedule(String id) {
-    return _schedules.doc(id).delete();
+    return _api.delete('/schedules/$id');
   }
 }

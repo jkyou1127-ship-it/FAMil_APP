@@ -1,33 +1,40 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../models/alarm.dart';
+import 'api_client.dart';
+import 'live_query.dart';
 
 class AlarmRepository {
-  AlarmRepository({FirebaseFirestore? firestore})
-      : _db = firestore ?? FirebaseFirestore.instance;
+  AlarmRepository({ApiClient? api}) : _api = api ?? ApiClient.instance;
 
-  final FirebaseFirestore _db;
-
-  CollectionReference<Map<String, dynamic>> get _alarms =>
-      _db.collection('alarms');
+  final ApiClient _api;
 
   Stream<List<Alarm>> watchMyAlarms(String uid) {
-    return _alarms.where('uid', isEqualTo: uid).snapshots().map((snap) {
-      final list =
-          snap.docs.map((d) => Alarm.fromMap(d.id, d.data())).toList();
-      list.sort((a, b) =>
-          (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute));
-      return list;
-    });
+    return watchLive(
+      fetch: () async {
+        final res = await _api.get('/alarms');
+        final list = (res['alarms'] as List)
+            .map((e) => Alarm.fromJson(e as Map<String, dynamic>))
+            .toList();
+        list.sort((a, b) =>
+            (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute));
+        return list;
+      },
+      event: 'alarms:changed',
+    );
   }
 
-  Future<void> addAlarm(Alarm alarm) => _alarms.add(alarm.toMap());
+  Future<void> addAlarm(Alarm alarm) {
+    return _api.post('/alarms', body: alarm.toJson());
+  }
 
-  Future<void> updateAlarm(Alarm alarm) =>
-      _alarms.doc(alarm.id).update(alarm.toMap());
+  Future<void> updateAlarm(Alarm alarm) {
+    return _api.put('/alarms/${alarm.id}', body: alarm.toJson());
+  }
 
-  Future<void> setEnabled(String id, bool enabled) =>
-      _alarms.doc(id).update({'enabled': enabled});
+  Future<void> setEnabled(String id, bool enabled) {
+    return _api.patch('/alarms/$id', body: {'enabled': enabled});
+  }
 
-  Future<void> deleteAlarm(String id) => _alarms.doc(id).delete();
+  Future<void> deleteAlarm(String id) {
+    return _api.delete('/alarms/$id');
+  }
 }

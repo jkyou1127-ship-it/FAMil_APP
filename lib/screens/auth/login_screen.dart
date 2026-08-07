@@ -1,7 +1,8 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../../services/auth_service.dart';
+import '../../app_session.dart';
+import '../../services/api_client.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -15,7 +16,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = AuthService();
 
   bool _loading = false;
   String? _error;
@@ -34,13 +34,12 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      await _authService.signIn(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
-      // 로그인 성공 시 AppSession 스트림이 자동으로 화면을 전환한다.
-    } on FirebaseAuthException catch (e) {
-      setState(() => _error = _messageFor(e));
+      await context.read<AppSession>().signIn(
+            email: _emailController.text,
+            password: _passwordController.text,
+          );
+    } on ApiException catch (e) {
+      setState(() => _error = e.message);
     } catch (e) {
       setState(() => _error = '로그인에 실패했습니다: $e');
     } finally {
@@ -48,21 +47,9 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  String _messageFor(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'user-not-found':
-      case 'wrong-password':
-      case 'invalid-credential':
-        return '이메일 또는 비밀번호가 올바르지 않습니다.';
-      case 'invalid-email':
-        return '이메일 형식이 올바르지 않습니다.';
-      default:
-        return '로그인 실패: ${e.message ?? e.code}';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final session = context.watch<AppSession>();
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -133,6 +120,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                   builder: (_) => const SignUpScreen()),
                             ),
                     child: const Text('계정이 없으신가요? 회원가입'),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '서버: ${ApiClient.instance.baseUrl ?? ''}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  TextButton(
+                    onPressed: _loading
+                        ? null
+                        : () => session.resetServer(),
+                    child: const Text('서버 주소 변경'),
                   ),
                 ],
               ),

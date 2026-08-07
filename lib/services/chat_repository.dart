@@ -1,16 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../models/chat_message.dart';
+import 'api_client.dart';
+import 'live_query.dart';
 
 /// 온라인 매신저(1:1 채팅)를 담당한다.
 class ChatRepository {
-  ChatRepository({FirebaseFirestore? firestore})
-      : _db = firestore ?? FirebaseFirestore.instance;
+  ChatRepository({ApiClient? api}) : _api = api ?? ApiClient.instance;
 
-  final FirebaseFirestore _db;
-
-  CollectionReference<Map<String, dynamic>> get _chats =>
-      _db.collection('chats');
+  final ApiClient _api;
 
   static String chatIdFor(String uidA, String uidB) {
     final sorted = [uidA, uidB]..sort();
@@ -18,22 +14,27 @@ class ChatRepository {
   }
 
   Stream<List<ChatSummary>> watchMyChats(String uid) {
-    return _chats
-        .where('participants', arrayContains: uid)
-        .orderBy('lastMessageAt', descending: true)
-        .snapshots()
-        .map((snap) =>
-            snap.docs.map((d) => ChatSummary.fromMap(d.id, d.data())).toList());
+    return watchLive(
+      fetch: () async {
+        final res = await _api.get('/chats/mine');
+        return (res['chats'] as List)
+            .map((e) => ChatSummary.fromJson(e as Map<String, dynamic>))
+            .toList();
+      },
+      event: 'chats:changed',
+    );
   }
 
   Stream<List<ChatMessage>> watchMessages(String chatId) {
-    return _chats
-        .doc(chatId)
-        .collection('messages')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snap) =>
-            snap.docs.map((d) => ChatMessage.fromMap(d.id, d.data())).toList());
+    return watchLive(
+      fetch: () async {
+        final res = await _api.get('/chats/$chatId/messages');
+        return (res['messages'] as List)
+            .map((e) => ChatMessage.fromJson(e as Map<String, dynamic>))
+            .toList();
+      },
+      event: 'chats:changed',
+    );
   }
 
   Future<void> sendMessage({
@@ -42,32 +43,11 @@ class ChatRepository {
     required String otherUid,
     required String otherName,
     required String text,
-  }) async {
-    final chatId = chatIdFor(myUid, otherUid);
-    final chatRef = _chats.doc(chatId);
-    final batch = _db.batch();
-    batch.set(
-      chatRef,
-      {
-        'participants': [myUid, otherUid],
-        'participantNames': {myUid: myName, otherUid: otherName},
-        'lastMessage': text,
-        'lastMessageAt': FieldValue.serverTimestamp(),
-        'lastSenderUid': myUid,
-      },
-      SetOptions(merge: true),
-    );
-    batch.set(chatRef.collection('messages').doc(), ChatMessage(
-      id: '',
-      senderUid: myUid,
-      text: text,
-    ).toMap());
-    await batch.commit();
+  }) {
+    return _api.post('/chats/$otherUid/messages', body: {'text': text});
   }
 
   Future<void> markRead(String chatId, String uid) {
-    return _chats.doc(chatId).set({
-      'lastReadAt': {uid: FieldValue.serverTimestamp()},
-    }, SetOptions(merge: true));
+    return _api.post('/chats/$chatId/read');
   }
 }
