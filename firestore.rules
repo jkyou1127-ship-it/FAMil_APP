@@ -1,0 +1,84 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isMe(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && myRole() == 'admin';
+    }
+
+    // 첫 계정을 관리자로 지정하기 위한 잠금 문서. 트랜잭션으로만 생성되고
+    // 이후에는 수정/삭제할 수 없다.
+    match /meta/adminAssigned {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isMe(uid);
+      // role, roomId는 관리자만 바꿀 수 있다. 본인은 그 외 필드(온라인 상태,
+      // 출입 가능 여부, 취침 여부, 프로필 사진 등)만 수정 가능하다.
+      allow update: if (isMe(uid) &&
+          request.resource.data.role == resource.data.role &&
+          request.resource.data.roomId == resource.data.roomId)
+        || isAdmin();
+    }
+
+    match /rooms/{roomId} {
+      allow read: if isSignedIn();
+      allow create, delete: if isAdmin();
+      // 소유자 배정/해제는 관리자만, knockEnabled(출입 가능 여부)는
+      // 해당 방의 소유자도 바꿀 수 있다.
+      allow update: if isAdmin() ||
+        (isSignedIn() && resource.data.ownerUid == request.auth.uid &&
+         request.resource.data.ownerUid == resource.data.ownerUid &&
+         request.resource.data.ownerName == resource.data.ownerName);
+    }
+
+    match /knocks/{knockId} {
+      allow read: if isSignedIn() &&
+        (resource.data.requesterUid == request.auth.uid ||
+         resource.data.ownerUid == request.auth.uid);
+      allow create: if isSignedIn() &&
+        request.resource.data.requesterUid == request.auth.uid;
+      // 소유자는 승인/거절, 요청자는 확인(acknowledge)만 가능하다.
+      allow update: if isSignedIn() &&
+        (resource.data.ownerUid == request.auth.uid ||
+         resource.data.requesterUid == request.auth.uid);
+    }
+
+    match /todos/{todoId} {
+      allow read, update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    match /schedules/{scheduleId} {
+      // 상태창에서 다른 사용자의 오늘 일정을 보여주기 위해 전체 읽기를 허용한다.
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    match /suggestions/{suggestionId} {
+      // 익명성 보장을 위해 작성자 정보를 저장하지 않으므로 누구나 읽고 쓸 수 있다.
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+  }
+}
