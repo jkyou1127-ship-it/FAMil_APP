@@ -5,6 +5,7 @@ import '../../models/alarm.dart';
 import '../../services/alarm_scheduler.dart';
 import '../../services/api_client.dart';
 import 'alarm_edit_screen.dart';
+import 'alarm_permissions_screen.dart';
 
 const _weekdayLabels = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -76,7 +77,18 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('알람')),
+      appBar: AppBar(
+        title: const Text('알람'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.security_outlined),
+            tooltip: '백그라운드 알람 권한 설정',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AlarmPermissionsScreen()),
+            ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AlarmEditScreen()));
