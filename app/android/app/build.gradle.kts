@@ -6,12 +6,15 @@ plugins {
 
 android {
     namespace = "com.famil.famil_app"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_secure_storage and permission_handler_android require compileSdk 37+.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Required by flutter_local_notifications.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -42,4 +45,8 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
