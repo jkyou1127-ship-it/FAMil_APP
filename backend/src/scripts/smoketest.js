@@ -1,0 +1,202 @@
+/*
+ * End-to-end smoke test for the FAMil APP backend.
+ * Starts the server in-process against a throwaway SQLite file, exercises
+ * every route + socket flow, and exits non-zero on the first failure.
+ * Usage: npm run smoketest
+ */
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+
+const dbPath = path.join(os.tmpdir(), `famil-smoketest-${Date.now()}.db`);
+process.env.DB_PATH = dbPath;
+process.env.JWT_SECRET = 'smoketest-secret';
+process.env.PORT = '4501';
+
+const { server, io } = require('../server');
+const { io: ioClient } = require('socket.io-client');
+
+const BASE = 'http://localhost:4501';
+let failures = 0;
+
+function assert(cond, msg) {
+  if (!cond) {
+    failures += 1;
+    console.error(`✗ FAIL: ${msg}`);
+  } else {
+    console.log(`✓ ${msg}`);
+  }
+}
+
+async function api(method, urlPath, { token, body } = {}) {
+  const res = await fetch(`${BASE}${urlPath}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let json = null;
+  try {
+    json = await res.json();
+  } catch (e) {
+    /* no body */
+  }
+  return { status: res.status, json };
+}
+
+function connectSocket(token) {
+  return new Promise((resolve, reject) => {
+    const socket = ioClient(BASE, { auth: { token }, transports: ['websocket'] });
+    socket.on('connect', () => resolve(socket));
+    socket.on('connect_error', reject);
+  });
+}
+
+async function main() {
+  // ---- Register: first user becomes admin ----
+  let r = await api('POST', '/auth/register', {
+    body: { username: 'admin1', password: 'pass1234', displayName: '관리자' },
+  });
+  assert(r.status === 201 && r.json.user.isAdmin === true, '첫 계정은 자동으로 관리자가 된다');
+  const adminToken = r.json.token;
+  const adminId = r.json.user.id;
+
+  r = await api('POST', '/auth/register', {
+    body: { username: 'owner1', password: 'pass1234', displayName: '철수' },
+  });
+  assert(r.status === 201 && r.json.user.isAdmin === false, '두번째 계정은 관리자가 아니다');
+  const ownerToken = r.json.token;
+  const ownerId = r.json.user.id;
+
+  r = await api('POST', '/auth/register', {
+    body: { username: 'guest1', password: 'pass1234', displayName: '영희' },
+  });
+  const guestToken = r.json.token;
+  const guestId = r.json.user.id;
+
+  r = await api('POST', '/auth/login', { body: { username: 'admin1', password: 'pass1234' } });
+  assert(r.status === 200 && r.json.token, '로그인 성공');
+
+  r = await api('POST', '/auth/login', { body: { username: 'admin1', password: 'wrong' } });
+  assert(r.status === 401, '잘못된 비밀번호는 거부된다');
+
+  // ---- Rooms & owner assignment (admin only) ----
+  r = await api('POST', '/rooms', { token: guestToken, body: { name: '해킹시도' } });
+  assert(r.status === 403, '관리자가 아니면 방을 만들 수 없다');
+
+  r = await api('POST', '/rooms', { token: adminToken, body: { name: '철수방' } });
+  assert(r.status === 201, '관리자는 방을 만들 수 있다');
+  const roomId = r.json.room.id;
+
+  r = await api('POST', `/rooms/${roomId}/assign-owner`, { token: adminToken, body: { userId: ownerId } });
+  assert(r.status === 200 && r.json.room.ownerId === ownerId, '관리자가 소유자를 배정한다');
+
+  // ---- Sockets: presence + knock + messenger ----
+  const ownerSocket = await connectSocket(ownerToken);
+  const guestSocket = await connectSocket(guestToken);
+  await new Promise((res) => setTimeout(res, 200));
+
+  r = await api('GET', '/status', { token: adminToken });
+  const ownerStatus = r.json.board.find((b) => b.userId === ownerId);
+  assert(ownerStatus.online === true, '소켓 연결 시 온라인 상태로 표시된다');
+
+  const knockPromise = new Promise((resolve) => ownerSocket.once('knock:new', resolve));
+  r = await api('POST', `/rooms/${roomId}/knock`, { token: guestToken });
+  assert(r.status === 201, '요청자가 노크를 보낸다');
+  const knockEvent = await knockPromise;
+  assert(knockEvent.roomId === roomId, '소유자가 실시간으로 노크 알림을 받는다');
+
+  const respondPromise = new Promise((resolve) => guestSocket.once('knock:responded', resolve));
+  r = await api('POST', `/rooms/knocks/${knockEvent.id}/respond`, {
+    token: ownerToken,
+    body: { approve: true },
+  });
+  assert(r.status === 200 && r.json.knock.status === 'approved', '소유자가 노크를 승인한다');
+  const responded = await respondPromise;
+  assert(responded.status === 'approved', '요청자가 실시간으로 승인 알림을 받는다');
+
+  // access off -> knock disabled
+  r = await api('PATCH', `/rooms/${roomId}/access`, { token: ownerToken, body: { status: 'closed' } });
+  assert(r.status === 200 && r.json.room.knockEnabled === false, '소유자가 출입을 막으면 노크가 비활성화된다');
+  r = await api('POST', `/rooms/${roomId}/knock`, { token: guestToken });
+  assert(r.status === 403, '출입 제한 시 노크가 거부된다');
+  await api('PATCH', `/rooms/${roomId}/access`, { token: ownerToken, body: { status: 'open' } });
+
+  // messenger via socket
+  const messagePromise = new Promise((resolve) => ownerSocket.once('message:new', resolve));
+  guestSocket.emit('message:send', { receiverId: ownerId, content: '안녕하세요!' });
+  const msg = await messagePromise;
+  assert(msg.content === '안녕하세요!', '소켓으로 실시간 메시지가 전달된다');
+
+  r = await api('GET', `/messages/${guestId}`, { token: ownerToken });
+  assert(r.json.messages.some((m) => m.content === '안녕하세요!'), 'REST로 대화 내역을 조회할 수 있다');
+
+  // ---- Suggestions (anonymous, visible to all) ----
+  r = await api('POST', '/suggestions', { token: guestToken, body: { content: '건조기 사주세요' } });
+  assert(r.status === 201 && r.json.suggestion.authorId === undefined, '건의사항은 작성자 정보 없이 저장된다');
+  r = await api('GET', '/suggestions', { token: ownerToken });
+  assert(r.json.suggestions.some((s) => s.content === '건조기 사주세요'), '모두가 건의사항을 볼 수 있다');
+
+  // ---- Lottery ----
+  r = await api('POST', '/lottery/draw', { token: adminToken });
+  assert(r.status === 201 && [ownerId, guestId, adminId].includes(r.json.result.winnerId), '온라인 사용자 중 추첨된다');
+
+  // ---- Sleep / wake ----
+  r = await api('POST', '/sleep/start', { token: guestToken });
+  assert(r.status === 201, '취침 기록이 생성된다');
+  r = await api('POST', '/sleep/start', { token: guestToken });
+  assert(r.status === 409, '이미 취침 중이면 다시 취침할 수 없다');
+  r = await api('POST', '/sleep/wake', { token: guestToken });
+  assert(r.status === 200 && r.json.record.durationMinutes >= 0, '기상 시 잔 시간이 계산된다');
+  r = await api('PATCH', '/sleep/sound', { token: guestToken, body: { enabled: false } });
+  assert(r.status === 200 && r.json.sleepSoundEnabled === false, '수면 유도 노래 off 설정이 저장된다');
+
+  // ---- Alarms ----
+  r = await api('POST', '/alarms', {
+    token: guestToken,
+    body: { time: '07:30', repeatType: 'weekly', repeatDays: [1, 2, 3, 4, 5], sound: 'tone1' },
+  });
+  assert(r.status === 201, '요일별 반복 알람을 만들 수 있다');
+  r = await api('POST', '/alarms', { token: guestToken, body: { time: '99:99', repeatType: 'daily' } });
+  assert(r.status === 400, '잘못된 시간 형식은 거부된다');
+
+  // ---- Schedules ----
+  r = await api('POST', '/schedules', { token: guestToken, body: { date: '2026-08-10', content: '병원 예약' } });
+  assert(r.status === 201, '일정을 등록할 수 있다');
+
+  // ---- Todos: complete -> strikethrough flag -> cron cleanup ----
+  r = await api('POST', '/todos', { token: guestToken, body: { content: '설거지' } });
+  const todoId = r.json.todo.id;
+  r = await api('PATCH', `/todos/${todoId}`, { token: guestToken, body: { completed: true } });
+  assert(r.status === 200 && r.json.todo.completed === true && r.json.todo.completedDate, '할 일 완료 처리 및 완료일 기록');
+
+  const { cleanupCompletedTodos } = require('../cron');
+  const db = require('../db');
+  db.prepare('UPDATE todos SET completed_date = ? WHERE id = ?').run('2000-01-01', todoId);
+  cleanupCompletedTodos();
+  r = await api('GET', '/todos', { token: guestToken });
+  assert(!r.json.todos.some((t) => t.id === todoId), '하루가 지난 완료 항목은 자정 정리 작업으로 삭제된다');
+
+  // ---- Status board reflects room + sleep + online ----
+  r = await api('GET', '/status', { token: adminToken });
+  const guestBoard = r.json.board.find((b) => b.userId === guestId);
+  assert(guestBoard.sleepStatus === 'awake', '상태창에 취침/기상 상태가 반영된다');
+
+  ownerSocket.close();
+  guestSocket.close();
+  server.close();
+
+  console.log(`\n${failures === 0 ? '모든 테스트 통과' : `${failures}개 실패`}`);
+  fs.unlink(dbPath, () => {});
+  fs.unlink(`${dbPath}-journal`, () => {});
+  fs.unlink(`${dbPath}-wal`, () => {});
+  fs.unlink(`${dbPath}-shm`, () => {});
+  process.exit(failures === 0 ? 0 : 1);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

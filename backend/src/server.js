@@ -1,0 +1,60 @@
+require('dotenv').config();
+const path = require('path');
+const express = require('express');
+const cors = require('cors');
+const http = require('http');
+const { Server } = require('socket.io');
+
+const { initSockets } = require('./sockets');
+const { startCronJobs } = require('./cron');
+
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
+const roomRoutes = require('./routes/rooms');
+const messageRoutes = require('./routes/messages');
+const suggestionRoutes = require('./routes/suggestions');
+const statusRoutes = require('./routes/status');
+const lotteryRoutes = require('./routes/lottery');
+const sleepRoutes = require('./routes/sleep');
+const alarmRoutes = require('./routes/alarms');
+const scheduleRoutes = require('./routes/schedules');
+const todoRoutes = require('./routes/todos');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: process.env.CORS_ORIGIN || '*' } });
+
+app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
+app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
+app.get('/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
+
+app.use('/auth', authRoutes);
+app.use('/users', userRoutes);
+app.use('/rooms', roomRoutes);
+app.use('/messages', messageRoutes);
+app.use('/suggestions', suggestionRoutes);
+app.use('/status', statusRoutes);
+app.use('/lottery', lotteryRoutes);
+app.use('/sleep', sleepRoutes);
+app.use('/alarms', alarmRoutes);
+app.use('/schedules', scheduleRoutes);
+app.use('/todos', todoRoutes);
+
+app.use((req, res) => res.status(404).json({ error: 'Not found' }));
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+});
+
+initSockets(io);
+startCronJobs();
+
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, () => {
+  console.log(`FAMil APP backend listening on port ${PORT}`);
+});
+
+module.exports = { app, server, io };
