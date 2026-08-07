@@ -127,8 +127,47 @@ flutter run -d chrome   # 웹 (참고용)
 
 사용자는 알람 설정 화면에서 기기에 있는 다른 음원 파일을 직접 선택해 사용할 수도 있습니다.
 
+## 집 밖에서도 사용하기 (외부 접속)
+
+기본 설정(같은 Wi-Fi에서 사설 IP로 접속)은 집 안에서만 동작합니다. 밖에서도 쓰려면 아래 방법 중 하나로 백엔드를 외부에 노출해야 합니다.
+
+### 방법 A. Cloudflare Tunnel (추천 — 무료, 공유기 설정 불필요)
+
+집 PC에서 백엔드를 그대로 실행하면서, 포트포워딩이나 고정 IP 없이 안전하게 외부에 노출하는 가장 쉬운 방법입니다. Cloudflare 계정(무료)만 있으면 됩니다.
+
+```bash
+# 1) cloudflared 설치 (예: macOS)
+brew install cloudflared
+# Windows/Linux는 https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/ 참고
+
+# 2) 백엔드를 평소대로 켠 상태에서, 터널로 4000번 포트를 외부에 연결
+cloudflared tunnel --url http://localhost:4000
+```
+
+실행하면 `https://xxxx-xxxx.trycloudflare.com` 같은 임시 공개 주소가 나옵니다. 이 주소를 앱의 "서버 주소 설정"에 입력하면 밖에서도 접속됩니다. (매번 실행할 때마다 주소가 바뀌는 임시 터널입니다. 고정 주소가 필요하면 Cloudflare 계정에 도메인을 연결해 "명명된 터널(named tunnel)"을 만드세요 — [공식 가이드](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/).)
+
+### 방법 B. Docker로 클라우드에 배포
+
+`backend/Dockerfile`이 포함되어 있어 Render, Fly.io, Railway 등 어떤 컨테이너 호스팅에도 올릴 수 있습니다. 예시로 [Fly.io](https://fly.io) 기준 (`backend/fly.toml` 포함, 앱 이름/리전은 원하는 값으로 수정):
+
+```bash
+cd backend
+brew install flyctl   # 또는 https://fly.io/docs/flyctl/install/
+fly auth login
+fly launch --no-deploy          # fly.toml을 그대로 사용할지 물으면 예
+fly volumes create famil_data --size 1   # SQLite 데이터를 보관할 영구 볼륨
+fly secrets set JWT_SECRET="$(openssl rand -hex 32)"
+fly deploy
+```
+
+배포가 끝나면 `https://<앱이름>.fly.dev` 주소가 생기고, 이를 앱의 서버 주소로 입력하면 됩니다. 이 방식은 PC를 항상 켜둘 필요가 없다는 장점이 있는 대신, SQLite 데이터가 서버 쪽에 저장되므로 볼륨을 반드시 연결해야 데이터가 유지됩니다.
+
+### 방법 C. 공유기 포트포워딩 + DDNS (고급)
+
+전통적인 방법이지만 집 IP가 그대로 노출되고 보안 설정을 직접 관리해야 하므로, 방법 A(Cloudflare Tunnel)를 먼저 권장합니다. 굳이 이 방법을 쓴다면 공유기에서 4000번 포트를 백엔드 PC로 포워딩하고, DDNS(예: 공유기 제조사 제공 DDNS, No-IP 등)로 도메인을 연결한 뒤, 반드시 nginx/Caddy 같은 리버스 프록시로 HTTPS를 앞단에 두세요.
+
 ## 보안/운영 참고
 
-- 이 백엔드는 **자체 호스팅**을 전제로 합니다. 외부에 노출할 경우 반드시 HTTPS 리버스 프록시(예: nginx + Let's Encrypt)를 앞단에 두고, `.env`의 `CORS_ORIGIN`을 실제 도메인으로 제한하세요.
+- 이 백엔드는 **자체 호스팅**을 전제로 합니다. 외부에 노출할 경우 반드시 HTTPS(위 방법 A의 Cloudflare Tunnel은 자동으로 HTTPS를 제공합니다)를 사용하고, `.env`의 `CORS_ORIGIN`을 실제 도메인으로 제한하세요.
 - Android 클라이언트는 사설 네트워크에서 평문 HTTP로 접속할 수 있도록 `usesCleartextTraffic="true"`가 설정되어 있습니다. 공인 인터넷에 노출한다면 HTTPS로 전환하고 이 옵션을 제거하는 것을 권장합니다.
 - 비밀번호는 bcrypt로 해싱되어 저장되며, 인증은 JWT(기본 30일 만료)를 사용합니다.
