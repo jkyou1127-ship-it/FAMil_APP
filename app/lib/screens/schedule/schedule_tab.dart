@@ -42,10 +42,12 @@ class _ScheduleTabState extends State<ScheduleTab> {
       for (final s in list) {
         grouped.putIfAbsent(s.date, () => []).add(s);
       }
-      if (mounted) setState(() {
-        _byDate = grouped;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _byDate = grouped;
+          _loading = false;
+        });
+      }
     } on ApiException catch (_) {
       if (mounted) setState(() => _loading = false);
     }

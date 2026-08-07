@@ -29,10 +29,12 @@ class _SuggestionScreenState extends State<SuggestionScreen> {
       final list = (res['suggestions'] as List<dynamic>)
           .map((e) => Suggestion.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
-      if (mounted) setState(() {
-        _suggestions = list;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _suggestions = list;
+          _loading = false;
+        });
+      }
     } on ApiException catch (_) {
       if (mounted) setState(() => _loading = false);
     }

@@ -41,10 +41,12 @@ class _LotteryScreenState extends State<LotteryScreen> {
       final list = (res['history'] as List<dynamic>)
           .map((e) => LotteryResult.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
-      if (mounted) setState(() {
-        _history = list;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _history = list;
+          _loading = false;
+        });
+      }
     } on ApiException catch (_) {
       if (mounted) setState(() => _loading = false);
     }

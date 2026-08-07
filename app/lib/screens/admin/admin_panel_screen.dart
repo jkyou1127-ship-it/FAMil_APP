@@ -35,11 +35,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       final users = (usersRes['users'] as List<dynamic>)
           .map((e) => AppUser.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
-      if (mounted) setState(() {
-        _rooms = rooms;
-        _users = users;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _rooms = rooms;
+          _users = users;
+          _loading = false;
+        });
+      }
     } on ApiException catch (_) {
       if (mounted) setState(() => _loading = false);
     }

@@ -36,10 +36,12 @@ class _TodoTabState extends State<TodoTab> {
       final list = (res['todos'] as List<dynamic>)
           .map((e) => TodoItem.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
-      if (mounted) setState(() {
-        _todos = list;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _todos = list;
+          _loading = false;
+        });
+      }
     } on ApiException catch (_) {
       if (mounted) setState(() => _loading = false);
     }

@@ -48,16 +48,20 @@ class _StatusBoardScreenState extends State<StatusBoardScreen> {
       final board = (res['board'] as List<dynamic>)
           .map((e) => StatusEntry.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
-      if (mounted) setState(() {
-        _board = board;
-        _loading = false;
-        _error = null;
-      });
+      if (mounted) {
+        setState(() {
+          _board = board;
+          _loading = false;
+          _error = null;
+        });
+      }
     } on ApiException catch (e) {
-      if (mounted) setState(() {
-        _error = e.message;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _loading = false;
+        });
+      }
     }
   }
 

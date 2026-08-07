@@ -46,10 +46,12 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
       final list = (res['alarms'] as List<dynamic>)
           .map((e) => Alarm.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
-      if (mounted) setState(() {
-        _alarms = list;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _alarms = list;
+          _loading = false;
+        });
+      }
     } on ApiException catch (_) {
       if (mounted) setState(() => _loading = false);
     }

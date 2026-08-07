@@ -207,29 +207,35 @@ class _AlarmEditScreenState extends State<AlarmEditScreen> {
             ),
           const SizedBox(height: 20),
           Text('알람 소리', style: Theme.of(context).textTheme.titleSmall),
-          ...kAlarmSounds.map((s) => RadioListTile<String>(
-                value: s.id,
-                groupValue: _sound,
-                title: Text(s.label),
-                secondary: IconButton(
-                  icon: const Icon(Icons.play_arrow),
-                  onPressed: () => _preview(s.asset),
-                ),
-                onChanged: (v) => setState(() => _sound = v!),
-              )),
-          RadioListTile<String>(
-            value: _customSoundPath != null ? 'custom:$_customSoundPath' : 'custom:',
+          RadioGroup<String>(
             groupValue: _sound,
-            title: Text(_customSoundPath != null ? '직접 추가한 소리' : '직접 넣기'),
-            subtitle: _customSoundPath != null ? Text(_customSoundPath!, overflow: TextOverflow.ellipsis) : null,
-            secondary: IconButton(icon: const Icon(Icons.folder_open), onPressed: _pickCustomSound),
-            onChanged: (_) async {
-              if (_customSoundPath == null) {
-                await _pickCustomSound();
-              } else {
-                setState(() => _sound = 'custom:$_customSoundPath');
+            onChanged: (v) {
+              if (v == null) return;
+              if (v == 'custom:') {
+                _pickCustomSound();
+                return;
               }
+              setState(() => _sound = v);
             },
+            child: Column(
+              children: [
+                ...kAlarmSounds.map((s) => RadioListTile<String>(
+                      value: s.id,
+                      title: Text(s.label),
+                      secondary: IconButton(
+                        icon: const Icon(Icons.play_arrow),
+                        onPressed: () => _preview(s.asset),
+                      ),
+                    )),
+                RadioListTile<String>(
+                  value: _customSoundPath != null ? 'custom:$_customSoundPath' : 'custom:',
+                  title: Text(_customSoundPath != null ? '직접 추가한 소리' : '직접 넣기'),
+                  subtitle:
+                      _customSoundPath != null ? Text(_customSoundPath!, overflow: TextOverflow.ellipsis) : null,
+                  secondary: IconButton(icon: const Icon(Icons.folder_open), onPressed: _pickCustomSound),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 24),
           FilledButton(

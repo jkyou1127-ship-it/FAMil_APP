@@ -54,11 +54,13 @@ class _SleepScreenState extends State<SleepScreen> {
           .map((e) => SleepRecord.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
       final open = list.where((r) => r.wakeAt == null).toList();
-      if (mounted) setState(() {
-        _records = list;
-        _open = open.isNotEmpty ? open.first : null;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _records = list;
+          _open = open.isNotEmpty ? open.first : null;
+          _loading = false;
+        });
+      }
     } on ApiException catch (_) {
       if (mounted) setState(() => _loading = false);
     }

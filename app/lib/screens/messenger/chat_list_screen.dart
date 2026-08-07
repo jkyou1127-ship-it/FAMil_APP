@@ -43,10 +43,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
       final list = (res['conversations'] as List<dynamic>)
           .map((e) => Conversation.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
-      if (mounted) setState(() {
-        _conversations = list;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _conversations = list;
+          _loading = false;
+        });
+      }
     } on ApiException catch (_) {
       if (mounted) setState(() => _loading = false);
     }
