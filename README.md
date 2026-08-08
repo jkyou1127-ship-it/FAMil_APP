@@ -28,6 +28,9 @@
 | 알람 (매일/요일별/날짜지정) | `backend/src/routes/alarms.js` | `app/lib/screens/alarms/` + `services/alarm_scheduler.dart`, `services/local_notifications_service.dart` |
 | 일정 | `backend/src/routes/schedules.js` | `app/lib/screens/schedule/schedule_tab.dart` |
 | 할 일 목록 (완료 후 하루 지나면 삭제) | `backend/src/routes/todos.js` + `backend/src/cron/index.js` | `app/lib/screens/todo/todo_tab.dart` |
+| 단톡방 (그룹 채팅) | `backend/src/routes/chatRooms.js` + 소켓 `group:*` | `app/lib/screens/messenger/group_chat_list_view.dart`, `group_chat_screen.dart` |
+| 장보기 목록 (온 가족 공유) | `backend/src/routes/shopping.js` + 소켓 `shopping:update` | `app/lib/screens/shopping/shopping_list_screen.dart` |
+| 백업 서버 (PC가 꺼졌을 때 다른 기기를 임시 서버로) | `backend/src/routes/backup.js` + `app/lib/server/`(내장 Dart 서버) | `app/lib/screens/admin/backup_server_screen.dart` |
 | 시계 (KST) | `backend/src/utils/time.js` | `app/lib/widgets/kst_clock_widget.dart` |
 | 관리자: 방 생성 / 소유자 배정 | `backend/src/routes/rooms.js` | `app/lib/screens/admin/admin_panel_screen.dart` |
 
@@ -105,6 +108,8 @@ flutter run -d chrome   # 웹 (참고용)
 
 - `knock:new` / `knock:responded` — 온라인 노크 알림/응답
 - `message:new` — 매신저 메시지
+- `group:room:new` / `group:message:new` — 단톡방 초대/메시지
+- `shopping:update` — 장보기 목록 변경(추가/체크/삭제)
 - `status:update` / `rooms:update` — 상태창(온오프라인, 출입 가능 여부 등) 변경
 
 ## 알람 시스템의 동작과 한계
@@ -122,6 +127,16 @@ flutter run -d chrome   # 웹 (참고용)
 - `sleep_lullaby.mp3`, `sleep_lullaby2.mp3` — 수면 유도 사운드 (취침 화면에서 곡 선택 가능, 매끄럽게 반복 재생됨)
 
 사용자는 알람 설정 화면에서 기기에 있는 다른 음원 파일을 직접 선택해 사용할 수도 있습니다.
+
+## 백업 서버 (임시)
+
+PC 백엔드가 꺼져 있을 때, 로그인한 가족 구성원 누구나 **더보기 → 백업 서버 (임시)** 화면에서 자기 기기(폰 또는 다른 Windows PC)를 같은 Wi-Fi 안에서만 쓰는 임시 서버로 켤 수 있습니다. Flutter 앱에 내장된 Dart 서버(`app/lib/server/`)를 그대로 사용하며, 별도 설치가 필요 없습니다.
+
+- **평소**: PC 백엔드가 켜져 있을 때 "지금 스냅샷 저장"으로 계정/데이터의 스냅샷을 미리 받아둡니다.
+- **PC가 꺼졌을 때**: "백업 서버로 시작"을 누르면 이 기기가 서버가 되고, 기존과 동일한 UDP 자동 감지 프로토콜에 응답하기 시작합니다 — 다른 가족은 로그인 화면의 "같은 Wi-Fi에서 자동 감지"로 이 기기를 찾아 기존 계정 그대로 다시 로그인하면 됩니다.
+- **PC가 복구되면**: "주 서버로 복귀"를 누르면 백업 중 쌓인 메시지/단톡방 메시지/할 일/일정/건의사항/장보기 항목을 PC로 병합한 뒤 자동으로 중지됩니다. 백업 중 새로 만든 계정이나 방/단톡방은 병합 대상에서 제외됩니다.
+- 자동으로 전환되지 않습니다 — 여러 기기가 동시에 서버가 되는 상황(split-brain)을 피하기 위해 항상 사용자가 버튼을 직접 눌러야 동작합니다.
+- Android에서는 앱이 백그라운드로 가도 서버가 유지되도록 포그라운드 서비스로 실행됩니다. Windows는 앱이 실행 중이기만 하면 됩니다.
 
 ## 집 밖에서도 사용하기 (외부 접속)
 
