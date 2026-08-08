@@ -6,15 +6,20 @@ import 'package:shelf_router/shelf_router.dart';
 import 'package:shelf_static/shelf_static.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+import 'cron/todo_cleanup_job.dart';
 import 'db/schema.dart';
 import 'realtime/realtime_hub.dart';
 import 'realtime/ws_route.dart';
+import 'routes/alarms_routes.dart';
 import 'routes/auth_routes.dart';
 import 'routes/lottery_routes.dart';
 import 'routes/messages_routes.dart';
 import 'routes/rooms_routes.dart';
+import 'routes/schedules_routes.dart';
+import 'routes/sleep_routes.dart';
 import 'routes/status_routes.dart';
 import 'routes/suggestions_routes.dart';
+import 'routes/todos_routes.dart';
 import 'routes/users_routes.dart';
 import 'utils/json_response.dart';
 import 'utils/kst_time.dart';
@@ -27,15 +32,16 @@ class FamilServer {
   final String jwtSecret;
   final String uploadsDir;
   final RealtimeHub realtime;
+  final TodoCleanupJob _todoCleanup;
   HttpServer? _httpServer;
 
-  FamilServer._(this.db, this.jwtSecret, this.uploadsDir, this.realtime);
+  FamilServer._(this.db, this.jwtSecret, this.uploadsDir, this.realtime, this._todoCleanup);
 
   static FamilServer open({required String dbPath, required String jwtSecret, required String uploadsDir}) {
     ServerTime.init();
     final db = openFamilDatabase(dbPath);
     Directory(uploadsDir).createSync(recursive: true);
-    return FamilServer._(db, jwtSecret, uploadsDir, RealtimeHub(db));
+    return FamilServer._(db, jwtSecret, uploadsDir, RealtimeHub(db), TodoCleanupJob(db));
   }
 
   int? get port => _httpServer?.port;
@@ -51,15 +57,24 @@ class FamilServer {
     router.mount('/suggestions', buildSuggestionsRouter(db, jwtSecret).call);
     router.mount('/status', buildStatusRouter(db, jwtSecret).call);
     router.mount('/lottery', buildLotteryRouter(db, jwtSecret, realtime).call);
+    router.mount('/sleep', buildSleepRouter(db, jwtSecret, realtime).call);
+    router.mount('/alarms', buildAlarmsRouter(db, jwtSecret).call);
+    router.mount('/schedules', buildSchedulesRouter(db, jwtSecret).call);
+    router.mount('/todos', buildTodosRouter(db, jwtSecret).call);
     router.mount('/uploads', createStaticHandler(uploadsDir));
     router.get('/health', (Request request) => jsonResponse({'ok': true, 'time': DateTime.now().toUtc().toIso8601String()}));
     router.get('/realtime', buildRealtimeHandler(db, jwtSecret, realtime));
 
     final handler = const Pipeline().addMiddleware(_corsHeaders()).addHandler(router.call);
     _httpServer = await shelf_io.serve(handler, address, port);
+    _todoCleanup.start();
   }
 
+  /// 테스트 전용: 실제로는 KST 자정에 자동 실행되는 정리 작업을 즉시 실행한다.
+  void runTodoCleanupForTest() => _todoCleanup.cleanupCompletedTodos();
+
   Future<void> stop() async {
+    _todoCleanup.stop();
     await _httpServer?.close(force: true);
     _httpServer = null;
     db.close();

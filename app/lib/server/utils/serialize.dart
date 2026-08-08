@@ -11,6 +11,7 @@ Map<String, dynamic>? publicUser(Row? u) {
     'profilePhoto': u['profile_photo'],
     'sleepStatus': u['sleep_status'],
     'sleepSoundEnabled': (u['sleep_sound_enabled'] as int) != 0,
+    'sleepSoundId': u['sleep_sound_id'] ?? 'lullaby1',
     'online': (u['online'] as int) != 0,
     'roomId': u['room_id'],
     'createdAt': u['created_at'],

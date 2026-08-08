@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
   profile_photo TEXT,
   sleep_status TEXT NOT NULL DEFAULT 'awake',
   sleep_sound_enabled INTEGER NOT NULL DEFAULT 1,
+  sleep_sound_id TEXT NOT NULL DEFAULT 'lullaby1',
   online INTEGER NOT NULL DEFAULT 0,
   room_id INTEGER,
   created_at TEXT NOT NULL,
