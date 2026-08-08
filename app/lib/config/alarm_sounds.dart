@@ -11,9 +11,11 @@ const kAlarmSounds = [
   AlarmSoundOption('tone1', '비프음 (기본)', 'assets/sounds/alarm_tone1.wav'),
   AlarmSoundOption('tone2', '차임벨', 'assets/sounds/alarm_tone2.wav'),
   AlarmSoundOption('tone3', '멜로디', 'assets/sounds/alarm_tone3.wav'),
+  AlarmSoundOption('tone4', 'Boss Level Sunrise', 'assets/sounds/alarm_tone4.mp3'),
+  AlarmSoundOption('tone5', 'Gold Over Suncheon', 'assets/sounds/alarm_tone5.mp3'),
 ];
 
-const kSleepSoundAsset = 'assets/sounds/sleep_lullaby.wav';
+const kSleepSoundAsset = 'assets/sounds/sleep_lullaby.mp3';
 
 String alarmAssetFor(String soundId) {
   final match = kAlarmSounds.where((s) => s.id == soundId);
