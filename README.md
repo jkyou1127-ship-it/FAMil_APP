@@ -5,7 +5,7 @@
 두 부분으로 구성됩니다.
 
 - **`backend/`** — Node.js + Express + Socket.IO + SQLite 자체 백엔드 서버 (로그인, 실시간 알림/메신저, 데이터 저장)
-- **`app/`** — Flutter 클라이언트. 하나의 코드베이스로 **Android APK**와 **Windows/Linux 데스크톱 앱**을 모두 빌드합니다.
+- **`app/`** — Flutter 클라이언트. 하나의 코드베이스로 **Android APK**와 **Windows 데스크톱 앱**을 모두 빌드합니다.
 
 ## 용어
 
@@ -61,7 +61,6 @@ npm run smoketest
 - [Flutter SDK](https://docs.flutter.dev/get-started/install) (stable 채널)
 - Android APK 빌드: Android Studio + Android SDK/NDK
 - Windows 빌드: Windows 10/11 + Visual Studio (Desktop development with C++)
-- Linux 빌드: `clang`, `cmake`, `ninja-build`, `libgtk-3-dev` 등 ([공식 가이드](https://docs.flutter.dev/platform-integration/linux/building))
 
 ```bash
 cd app
@@ -91,18 +90,11 @@ flutter build windows --release
 > 첫 실행 시 Windows SmartScreen이 "알 수 없는 게시자" 경고를 띄울 수 있는데, 서명되지 않은
 > 개인 빌드라서 나오는 정상적인 경고입니다. **"추가 정보" → "실행"** 을 누르면 진행됩니다.
 
-### Linux 데스크톱
-
-```bash
-flutter build linux --release
-```
-
 ### 개발 중 바로 실행해보기
 
 ```bash
 flutter run            # 연결된 기기/에뮬레이터
 flutter run -d windows  # Windows
-flutter run -d linux    # Linux
 flutter run -d chrome   # 웹 (참고용)
 ```
 
@@ -121,7 +113,7 @@ flutter run -d chrome   # 웹 (참고용)
 
 - **앱이 실행 중일 때**: 15초 간격으로 알람 목록을 확인해 정확한 시각에 전체화면 벨소리 화면을 띄우고, 설정한 노래(기본 제공 3곡 중 선택 또는 사용자가 직접 넣은 음원 파일)를 반복 재생합니다. "알람 끄기"를 누르면 소리가 끊기고 화면이 닫힙니다.
 - **앱이 백그라운드/종료 상태일 때(Android)**: `flutter_local_notifications`로 OS 알림을 함께 예약해 신뢰도를 보완합니다. 알람 화면 우측 상단의 방패 아이콘(백그라운드 알람 권한 설정)에서 **알림 권한**, **정확한 알람 권한**, **배터리 최적화 제외**를 한 화면에서 확인하고 바로 허용할 수 있습니다. 이 세 가지를 모두 허용하면 앱을 백그라운드로 보내거나 완전히 종료해도 알람이 울릴 가능성이 크게 높아집니다. 다만 제조사별 절전 정책(예: 일부 중국 제조사의 강화된 절전 모드)에 따라 여전히 지연되거나 울리지 않을 수 있습니다 — 이는 스토어에 등록되지 않은 알람 앱의 일반적인 한계입니다.
-- **Windows/Linux 데스크톱**: OS 차원의 백그라운드 알람 예약을 지원하지 않으므로, 앱이 실행 중이어야 알람이 울립니다.
+- **Windows 데스크톱**: OS 차원의 백그라운드 알람 예약을 지원하지 않으므로, 앱이 실행 중이어야 알람이 울립니다.
 - 반복 방식은 매일 / 요일별(복수 선택) / 날짜 지정 3가지를 지원합니다.
 
 ## 사운드 에셋
@@ -144,7 +136,7 @@ flutter run -d chrome   # 웹 (참고용)
 ```bash
 # 1) cloudflared 설치 (예: macOS)
 brew install cloudflared
-# Windows/Linux는 https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/ 참고
+# Windows는 https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/ 참고
 
 # 2) 백엔드를 평소대로 켠 상태에서, 터널로 4000번 포트를 외부에 연결
 cloudflared tunnel --url http://localhost:4000
