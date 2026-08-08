@@ -85,6 +85,12 @@ flutter build apk --release
 flutter build windows --release
 ```
 
+> GitHub Actions로 빌드한 `famil-app-windows` 아티팩트는 앱뿐 아니라 백엔드와 Node.js 런타임까지
+> 함께 묶여 있습니다. 압축을 풀고 **`FAMil_시작.bat`** 을 더블클릭하면 백엔드 서버가 자동으로
+> 백그라운드에서 켜지고 이어서 앱이 실행됩니다 — 별도로 `npm start`를 실행할 필요가 없습니다.
+> 첫 실행 시 Windows SmartScreen이 "알 수 없는 게시자" 경고를 띄울 수 있는데, 서명되지 않은
+> 개인 빌드라서 나오는 정상적인 경고입니다. **"추가 정보" → "실행"** 을 누르면 진행됩니다.
+
 ### Linux 데스크톱
 
 ```bash

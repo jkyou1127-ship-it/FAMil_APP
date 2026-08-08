@@ -48,21 +48,50 @@ jobs:
   build-windows:
     needs: analyze-and-test
     runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: app
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
-      - run: flutter pub get
-      - run: flutter build windows --release
+      - working-directory: app
+        run: flutter pub get
+      - working-directory: app
+        run: flutter build windows --release
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install backend production dependencies
+        working-directory: backend
+        run: npm ci --omit=dev
+      # Bundle the Flutter app, the backend (with its Windows-built native
+      # modules), and a copy of the Node.js runtime together so a single
+      # double-click (FAMil_시작.bat) starts the backend and the app —
+      # no separate `npm start` step required on the user's PC.
+      - name: Assemble self-contained Windows bundle
+        shell: pwsh
+        run: |
+          $dist = "dist"
+          New-Item -ItemType Directory -Force -Path "$dist/app" | Out-Null
+          New-Item -ItemType Directory -Force -Path "$dist/backend" | Out-Null
+          New-Item -ItemType Directory -Force -Path "$dist/node" | Out-Null
+
+          Copy-Item -Recurse -Force "app/build/windows/x64/runner/Release/*" "$dist/app/"
+
+          Copy-Item -Recurse -Force "backend/src" "$dist/backend/"
+          Copy-Item -Recurse -Force "backend/node_modules" "$dist/backend/"
+          Copy-Item -Force "backend/package.json" "$dist/backend/"
+          New-Item -ItemType Directory -Force -Path "$dist/backend/data" | Out-Null
+          New-Item -ItemType Directory -Force -Path "$dist/backend/uploads/profiles" | Out-Null
+
+          $nodeDir = Split-Path -Parent (Get-Command node).Source
+          Copy-Item -Force "$nodeDir/node.exe" "$dist/node/node.exe"
+
+          Copy-Item -Force "deploy/windows/FAMil_시작.bat" "$dist/FAMil_시작.bat"
       - uses: actions/upload-artifact@v4
         with:
           name: famil-app-windows
-          path: app/build/windows/x64/runner/Release/**
+          path: dist/**
           if-no-files-found: error
 
   build-linux:
