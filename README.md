@@ -4,7 +4,7 @@
 
 두 부분으로 구성됩니다.
 
-- **`backend/`** — Node.js + Express + Socket.IO + SQLite 자체 백엔드 서버 (로그인, 실시간 알림/메신저, 데이터 저장)
+- **`backend/`** — Node.js + Express + WebSocket + SQLite 자체 백엔드 서버 (로그인, 실시간 알림/메신저, 데이터 저장)
 - **`app/`** — Flutter 클라이언트. 하나의 코드베이스로 **Android APK**와 **Windows 데스크톱 앱**을 모두 빌드합니다.
 
 ## 용어
@@ -102,7 +102,7 @@ flutter run -d chrome   # 웹 (참고용)
 
 ## 실시간 동작 방식
 
-클라이언트는 Socket.IO로 백엔드에 연결되어 다음을 실시간으로 받습니다.
+클라이언트는 WebSocket(`/realtime?token=...`)으로 백엔드에 연결되어 다음을 실시간으로 받습니다.
 
 - `knock:new` / `knock:responded` — 온라인 노크 알림/응답
 - `message:new` — 매신저 메시지
