@@ -7,6 +7,12 @@ const db = require('../db');
 const connections = new Map();
 const eventHandlers = new Map();
 
+// 끊긴 즉시 오프라인 처리하면, 잠깐의 네트워크 끊김 후 재연결되는 정상적인
+// 경우에도 "온라인인데 오프라인으로 보임" 깜빡임이 생긴다. 유예 시간을 두고,
+// 그 안에 재연결되면 오프라인 처리를 취소한다.
+const OFFLINE_GRACE_MS = 8000;
+const offlineTimers = new Map(); // userId -> Timeout
+
 /// 클라이언트가 보내는 이벤트(예: message:send)에 대한 핸들러를 등록한다.
 /// Dart 서버의 RealtimeHub.on()과 동일한 역할 — 두 백엔드가 같은 프로토콜을 쓴다.
 function on(event, handler) {
@@ -43,11 +49,32 @@ function broadcastRooms() {
   broadcast('rooms:update', { rooms });
 }
 
+function markOnline(userId) {
+  const pendingOffline = offlineTimers.get(userId);
+  if (pendingOffline) {
+    clearTimeout(pendingOffline);
+    offlineTimers.delete(userId);
+  }
+  db.prepare('UPDATE users SET online = 1 WHERE id = ?').run(userId);
+  broadcastStatus();
+}
+
+function scheduleOffline(userId) {
+  if (offlineTimers.has(userId)) return;
+  const timer = setTimeout(() => {
+    offlineTimers.delete(userId);
+    const set = connections.get(userId);
+    if (set && set.size > 0) return; // 유예 시간 안에 재연결됨
+    db.prepare('UPDATE users SET online = 0 WHERE id = ?').run(userId);
+    broadcastStatus();
+  }, OFFLINE_GRACE_MS);
+  offlineTimers.set(userId, timer);
+}
+
 function handleConnection(userId, ws) {
   if (!connections.has(userId)) connections.set(userId, new Set());
   connections.get(userId).add(ws);
-  db.prepare('UPDATE users SET online = 1 WHERE id = ?').run(userId);
-  broadcastStatus();
+  markOnline(userId);
 
   ws.on('message', (raw) => {
     let message;
@@ -72,8 +99,7 @@ function handleConnection(userId, ws) {
     set.delete(ws);
     if (set.size === 0) {
       connections.delete(userId);
-      db.prepare('UPDATE users SET online = 0 WHERE id = ?').run(userId);
-      broadcastStatus();
+      scheduleOffline(userId);
     }
   };
   ws.on('close', handleDisconnect);
