@@ -21,6 +21,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _scrollController = ScrollController();
   List<ChatMessage> _messages = [];
   bool _loading = true;
+  String? _error;
   late final SocketService _socket;
   late final int _meId;
 
@@ -66,6 +67,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       if (mounted) {
         setState(() {
           _messages = list;
+          _error = null;
           _loading = false;
         });
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -74,8 +76,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           }
         });
       }
-    } on ApiException catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } on ApiException catch (e) {
+      // 서버에 연결할 수 없는 경우, 이전(다른 계정일 수도 있는) 대화 내용이
+      // 화면에 그대로 남아있지 않도록 비우고 에러를 보여준다.
+      if (mounted) {
+        setState(() {
+          _messages = [];
+          _error = e.message;
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -100,6 +110,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('서버에 연결할 수 없습니다: $_error', textAlign: TextAlign.center),
+                          const SizedBox(height: 12),
+                          OutlinedButton(onPressed: _load, child: const Text('다시 시도')),
+                        ],
+                      ),
+                    ),
+                  )
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(12),

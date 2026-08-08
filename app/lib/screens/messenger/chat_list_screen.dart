@@ -19,6 +19,7 @@ class ChatListScreen extends StatefulWidget {
 class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObserver {
   List<Conversation> _conversations = [];
   bool _loading = true;
+  String? _error;
   late final SocketService _socket;
 
   @override
@@ -53,11 +54,20 @@ class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObse
       if (mounted) {
         setState(() {
           _conversations = list;
+          _error = null;
           _loading = false;
         });
       }
-    } on ApiException catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } on ApiException catch (e) {
+      // 서버에 연결할 수 없는 경우, 이전(다른 계정일 수도 있는) 목록이 화면에
+      // 그대로 남아있지 않도록 비우고 에러를 보여준다.
+      if (mounted) {
+        setState(() {
+          _conversations = [];
+          _error = e.message;
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -106,7 +116,16 @@ class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObse
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _load,
-              child: _conversations.isEmpty
+              child: _error != null
+                  ? ListView(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Text('서버에 연결할 수 없습니다: $_error\n아래로 당겨서 다시 시도해주세요.'),
+                        ),
+                      ],
+                    )
+                  : _conversations.isEmpty
                   ? ListView(
                       children: const [
                         Padding(
