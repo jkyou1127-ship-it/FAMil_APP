@@ -6,6 +6,8 @@ import 'package:shelf_router/shelf_router.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 import 'db/schema.dart';
+import 'realtime/realtime_hub.dart';
+import 'realtime/ws_route.dart';
 import 'routes/auth_routes.dart';
 import 'utils/json_response.dart';
 import 'utils/kst_time.dart';
@@ -16,14 +18,15 @@ import 'utils/kst_time.dart';
 class FamilServer {
   final Database db;
   final String jwtSecret;
+  final RealtimeHub realtime;
   HttpServer? _httpServer;
 
-  FamilServer._(this.db, this.jwtSecret);
+  FamilServer._(this.db, this.jwtSecret, this.realtime);
 
   static FamilServer open({required String dbPath, required String jwtSecret}) {
     ServerTime.init();
     final db = openFamilDatabase(dbPath);
-    return FamilServer._(db, jwtSecret);
+    return FamilServer._(db, jwtSecret, RealtimeHub(db));
   }
 
   int? get port => _httpServer?.port;
@@ -34,6 +37,7 @@ class FamilServer {
     final router = Router();
     router.mount('/auth', buildAuthRouter(db, jwtSecret).call);
     router.get('/health', (Request request) => jsonResponse({'ok': true, 'time': DateTime.now().toUtc().toIso8601String()}));
+    router.get('/realtime', buildRealtimeHandler(db, jwtSecret, realtime));
 
     final handler = const Pipeline().addMiddleware(_corsHeaders()).addHandler(router.call);
     _httpServer = await shelf_io.serve(handler, address, port);
