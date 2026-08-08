@@ -1,10 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:async/async.dart';
 import 'package:famil_app/server/famil_server.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:web_socket_channel/io.dart';
 
 void main() {
   late FamilServer server;
@@ -79,38 +77,5 @@ void main() {
     final board = res['body']['board'] as List;
     final ownerEntry = board.firstWhere((b) => b['userId'] == owner['id']);
     expect(ownerEntry['room']['id'], roomId);
-  });
-
-  test('온라인 사용자 중에서 추첨하고 실시간으로 결과를 브로드캐스트한다', () async {
-    final a = await register('lot1');
-    final b = await register('lot2');
-
-    var res = await req('POST', '/lottery/draw', token: a['token']);
-    expect(res['status'], 400); // 아직 아무도 소켓으로 연결 안 함 = 온라인 없음
-
-    final channelA = IOWebSocketChannel.connect(Uri.parse('ws://127.0.0.1:${server.port}/realtime?token=${a['token']}'));
-    final channelB = IOWebSocketChannel.connect(Uri.parse('ws://127.0.0.1:${server.port}/realtime?token=${b['token']}'));
-    final queueA = StreamQueue(channelA.stream);
-    await queueA.next; // status:update (A 자신의 연결)
-    await channelB.stream.first; // status:update (B 자신의 연결)
-    await queueA.next; // status:update (B가 연결되며 다시 브로드캐스트됨)
-
-    res = await req('POST', '/lottery/draw', token: a['token']);
-    expect(res['status'], 201);
-    final winnerId = res['body']['result']['winnerId'];
-    expect([a['id'], b['id']], contains(winnerId));
-
-    final drawnRaw = await queueA.next.timeout(const Duration(seconds: 5));
-    final drawnMsg = json.decode(drawnRaw as String) as Map<String, dynamic>;
-    expect(drawnMsg['event'], 'lottery:drawn');
-    expect(drawnMsg['data']['winnerId'], winnerId);
-
-    await queueA.cancel();
-
-    final historyRes = await req('GET', '/lottery/history', token: a['token']);
-    expect((historyRes['body']['history'] as List).any((h) => h['winnerId'] == winnerId), true);
-
-    await channelA.sink.close();
-    await channelB.sink.close();
   });
 }

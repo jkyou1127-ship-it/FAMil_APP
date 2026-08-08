@@ -6,7 +6,6 @@ import '../../services/theme_controller.dart';
 import '../../widgets/user_avatar.dart';
 import '../admin/admin_panel_screen.dart';
 import '../auth/server_settings_dialog.dart';
-import '../lottery/lottery_screen.dart';
 import '../profile/profile_screen.dart';
 import '../sleep/sleep_screen.dart';
 import '../suggestions/suggestion_screen.dart';
@@ -70,11 +69,6 @@ class MoreScreen extends StatelessWidget {
             leading: const Icon(Icons.campaign_outlined),
             title: const Text('건의사항'),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SuggestionScreen())),
-          ),
-          ListTile(
-            leading: const Icon(Icons.casino_outlined),
-            title: const Text('추첨'),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LotteryScreen())),
           ),
           ListTile(
             leading: const Icon(Icons.bedtime_outlined),

@@ -59,7 +59,7 @@ Router buildAlarmsRouter(Database db, String jwtSecret) {
         type,
         type == 'weekly' ? json.encode(repeatDays) : null,
         type == 'date' ? specificDate : null,
-        body['sound']?.toString() ?? 'tone1',
+        body['sound']?.toString() ?? 'tone4',
         createdAt,
       ],
     );

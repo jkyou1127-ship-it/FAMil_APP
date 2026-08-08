@@ -53,7 +53,7 @@ router.post('/', authRequired, (req, res) => {
       type,
       type === 'weekly' ? JSON.stringify(repeatDays) : null,
       type === 'date' ? specificDate || null : null,
-      sound || 'tone1',
+      sound || 'tone4',
       createdAt
     );
   const row = db.prepare('SELECT * FROM alarms WHERE id = ?').get(info.lastInsertRowid);

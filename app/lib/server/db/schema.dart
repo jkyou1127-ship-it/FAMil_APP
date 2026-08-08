@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS alarms (
   repeat_type TEXT NOT NULL DEFAULT 'daily',
   repeat_days TEXT,
   specific_date TEXT,
-  sound TEXT NOT NULL DEFAULT 'tone1',
+  sound TEXT NOT NULL DEFAULT 'tone4',
   enabled INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -105,16 +105,6 @@ CREATE TABLE IF NOT EXISTS todos (
   completed_date TEXT,
   created_at TEXT NOT NULL,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS lottery_draws (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  winner_id INTEGER NOT NULL,
-  participant_ids TEXT NOT NULL,
-  drawn_by INTEGER,
-  created_at TEXT NOT NULL,
-  FOREIGN KEY (winner_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (drawn_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS device_tokens (

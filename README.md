@@ -24,7 +24,6 @@
 | 건의사항 (익명) | `backend/src/routes/suggestions.js` | `app/lib/screens/suggestions/` |
 | 출입 가능/불가능 전환 | `backend/src/routes/rooms.js` (`PATCH /rooms/:id/access`) | `status_board_screen.dart`의 스위치 |
 | 상태창 | `backend/src/routes/status.js` | `status_board_screen.dart` |
-| 추첨 | `backend/src/routes/lottery.js` | `app/lib/screens/lottery/` |
 | 취침/기상 + 수면유도 노래 | `backend/src/routes/sleep.js` | `app/lib/screens/sleep/` |
 | 알람 (매일/요일별/날짜지정) | `backend/src/routes/alarms.js` | `app/lib/screens/alarms/` + `services/alarm_scheduler.dart`, `services/local_notifications_service.dart` |
 | 일정 | `backend/src/routes/schedules.js` | `app/lib/screens/schedule/schedule_tab.dart` |
@@ -44,7 +43,7 @@ npm start
 
 기본적으로 `http://0.0.0.0:4000` 에서 실행됩니다. 데이터는 SQLite 파일(`backend/data/famil.db`)에 저장됩니다.
 
-end-to-end 스모크 테스트(회원가입/노크/메신저/건의사항/추첨/취침/알람/일정/할일 전체 흐름 검증):
+end-to-end 스모크 테스트(회원가입/노크/메신저/건의사항/취침/알람/일정/할일 전체 흐름 검증):
 
 ```bash
 npm run smoketest
@@ -107,7 +106,6 @@ flutter run -d chrome   # 웹 (참고용)
 - `knock:new` / `knock:responded` — 온라인 노크 알림/응답
 - `message:new` — 매신저 메시지
 - `status:update` / `rooms:update` — 상태창(온오프라인, 출입 가능 여부 등) 변경
-- `lottery:drawn` — 추첨 결과 전체 브로드캐스트
 
 ## 알람 시스템의 동작과 한계
 
@@ -118,10 +116,10 @@ flutter run -d chrome   # 웹 (참고용)
 
 ## 사운드 에셋
 
-`app/assets/sounds/`에는 저작권 문제 없이 자체 생성한 사인파 톤 시퀀스가 들어 있습니다 (`backend`가 아닌 순수 스크립트로 합성, 외부 샘플 미사용).
+`app/assets/sounds/`에는 다음 음원이 들어 있습니다.
 
-- `alarm_tone1.wav`, `alarm_tone2.wav`, `alarm_tone3.wav` — 알람 기본 제공 사운드 3종
-- `sleep_lullaby.wav` — 수면 유도 사운드
+- `alarm_tone4.mp3`, `alarm_tone5.mp3`, `alarm_tone6.mp3` — 알람 기본 제공 사운드 3종
+- `sleep_lullaby.mp3`, `sleep_lullaby2.mp3` — 수면 유도 사운드 (취침 화면에서 곡 선택 가능, 매끄럽게 반복 재생됨)
 
 사용자는 알람 설정 화면에서 기기에 있는 다른 음원 파일을 직접 선택해 사용할 수도 있습니다.
 

@@ -217,9 +217,46 @@ async function main() {
   r = await api('GET', '/suggestions', { token: ownerToken });
   assert(r.json.suggestions.some((s) => s.content === '건조기 사주세요'), '모두가 건의사항을 볼 수 있다');
 
-  // ---- Lottery ----
-  r = await api('POST', '/lottery/draw', { token: adminToken });
-  assert(r.status === 201 && [ownerId, guestId, adminId].includes(r.json.result.winnerId), '온라인 사용자 중 추첨된다');
+  // ---- Group chat (단톡방) ----
+  r = await api('POST', '/chat-rooms', {
+    token: ownerToken,
+    body: { name: '가족방', memberIds: [guestId] },
+  });
+  assert(r.status === 201 && r.json.room.name === '가족방', '단톡방을 만들 수 있다');
+  const chatRoomId = r.json.room.id;
+
+  r = await api('GET', '/chat-rooms', { token: guestToken });
+  assert(
+    r.json.rooms.some((rm) => rm.id === chatRoomId && rm.members.length === 2),
+    '멤버는 자신이 속한 단톡방 목록을 볼 수 있다'
+  );
+
+  r = await api('POST', `/chat-rooms/${chatRoomId}/messages`, {
+    token: ownerToken,
+    body: { content: 'REST로 보낸 메시지' },
+  });
+  assert(r.status === 201, 'REST로 단톡방 메시지를 보낼 수 있다');
+
+  const groupMessagePromise = new Promise((resolve) => guestSocket.once('group:room:new', resolve));
+  r = await api('POST', '/chat-rooms', { token: adminToken, body: { name: '관리자방', memberIds: [guestId] } });
+  const inviteNotice = await groupMessagePromise;
+  assert(inviteNotice.name === '관리자방', '단톡방에 초대되면 실시간으로 알림을 받는다');
+
+  const socketMessagePromise = new Promise((resolve) => ownerSocket.once('group:message:new', resolve));
+  guestSocket.emit('group:message:send', { roomId: chatRoomId, content: '소켓으로 보낸 메시지' });
+  const groupMsg = await socketMessagePromise;
+  assert(groupMsg.content === '소켓으로 보낸 메시지', '단톡방 멤버가 실시간으로 메시지를 받는다');
+
+  r = await api('GET', `/chat-rooms/${chatRoomId}/messages`, { token: guestToken });
+  assert(
+    r.json.messages.some((m) => m.content === '소켓으로 보낸 메시지'),
+    'REST로 단톡방 대화 내역을 조회할 수 있다'
+  );
+
+  r = await api('DELETE', `/chat-rooms/${chatRoomId}/members/me`, { token: guestToken });
+  assert(r.status === 204, '단톡방을 나갈 수 있다');
+  r = await api('GET', '/chat-rooms', { token: guestToken });
+  assert(!r.json.rooms.some((rm) => rm.id === chatRoomId), '나간 단톡방은 더 이상 목록에 보이지 않는다');
 
   // ---- Sleep / wake ----
   r = await api('POST', '/sleep/start', { token: guestToken });

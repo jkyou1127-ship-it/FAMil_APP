@@ -4,8 +4,8 @@ import 'dart:math';
 
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-/// 실시간 연결을 감싸는 얇은 래퍼. 온라인 노크, 실시간 매신저, 상태창,
-/// 추첨 결과 등 서버가 즉시 밀어주는 이벤트를 수신하는 데 사용한다.
+/// 실시간 연결을 감싸는 얇은 래퍼. 온라인 노크, 실시간 매신저, 상태창
+/// 등 서버가 즉시 밀어주는 이벤트를 수신하는 데 사용한다.
 ///
 /// Socket.IO 대신 raw WebSocket + JSON 이벤트 봉투(`{event, data[, ackId]}`)를
 /// 쓴다 — Node/Dart 두 백엔드가 같은 프로토콜을 쓰기 때문에, 클라이언트는

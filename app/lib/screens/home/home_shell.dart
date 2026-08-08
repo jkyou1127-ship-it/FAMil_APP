@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../../models/alarm.dart';
 import '../../models/knock.dart';
-import '../../models/lottery.dart';
 import '../../services/alarm_scheduler.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_provider.dart';
@@ -18,7 +17,7 @@ import '../schedule/schedule_todo_screen.dart';
 import '../status/status_board_screen.dart';
 
 /// 로그인 이후 앱의 뼈대. 하단 탭 전환과 함께, 어느 화면에 있든 실시간으로
-/// 도착하는 온라인 노크/추첨 결과 알림을 처리한다.
+/// 도착하는 온라인 노크 알림을 처리한다.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -39,7 +38,6 @@ class _HomeShellState extends State<HomeShell> {
     _socket = context.read<SocketService>();
     _socket.on('knock:new', _onKnockNew);
     _socket.on('knock:responded', _onKnockResponded);
-    _socket.on('lottery:drawn', _onLotteryDrawn);
     _socket.on('message:new', _onMessageNew);
 
     _alarmScheduler = context.read<AlarmScheduler>();
@@ -54,7 +52,6 @@ class _HomeShellState extends State<HomeShell> {
   void dispose() {
     _socket.off('knock:new', _onKnockNew);
     _socket.off('knock:responded', _onKnockResponded);
-    _socket.off('lottery:drawn', _onLotteryDrawn);
     _socket.off('message:new', _onMessageNew);
     _alarmScheduler.stop();
     _alarmScheduler.onFire = null;
@@ -110,13 +107,6 @@ class _HomeShellState extends State<HomeShell> {
         ? '"${knock.roomName}" 방 노크가 승인되었습니다.'
         : '"${knock.roomName}" 방 노크가 거절되었습니다.';
     rootScaffoldMessengerKey.currentState?.showSnackBar(SnackBar(content: Text(text)));
-  }
-
-  void _onLotteryDrawn(dynamic data) {
-    final result = LotteryResult.fromJson(Map<String, dynamic>.from(data as Map));
-    rootScaffoldMessengerKey.currentState?.showSnackBar(
-      SnackBar(content: Text('🎉 추첨 결과: ${result.winnerName}님 당첨!')),
-    );
   }
 
   void _onMessageNew(dynamic data) {
