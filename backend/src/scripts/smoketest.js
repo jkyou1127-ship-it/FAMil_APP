@@ -310,6 +310,22 @@ async function main() {
   r = await api('GET', '/auth/me', { token: guestToken });
   assert(r.json.user.sleepSoundId === 'lullaby2', '선택한 곡이 프로필에 반영된다');
 
+  // ---- 취침 시 자동 출입금지 ----
+  const roomAccess = async () => {
+    const res = await api('GET', '/rooms', { token: ownerToken });
+    return res.json.rooms.find((rm) => rm.id === roomId).accessStatus;
+  };
+  await api('POST', '/sleep/start', { token: ownerToken });
+  assert((await roomAccess()) === 'closed', '취침하면 소유한 방이 자동으로 출입금지로 바뀐다');
+  await api('POST', '/sleep/wake', { token: ownerToken });
+  assert((await roomAccess()) === 'open', '기상하면 취침으로 닫혔던 방이 자동으로 다시 열린다');
+
+  await api('PATCH', `/rooms/${roomId}/access`, { token: ownerToken, body: { status: 'closed' } });
+  await api('POST', '/sleep/start', { token: ownerToken });
+  await api('POST', '/sleep/wake', { token: ownerToken });
+  assert((await roomAccess()) === 'closed', '수동으로 닫아둔 방은 기상해도 자동으로 열리지 않는다');
+  await api('PATCH', `/rooms/${roomId}/access`, { token: ownerToken, body: { status: 'open' } });
+
   // ---- Alarms ----
   r = await api('POST', '/alarms', {
     token: guestToken,

@@ -80,7 +80,9 @@ router.patch('/:id/access', authRequired, (req, res) => {
   if (!['open', 'closed'].includes(status)) {
     return res.status(400).json({ error: "status는 'open' 또는 'closed'여야 합니다." });
   }
-  db.prepare('UPDATE rooms SET access_status = ? WHERE id = ?').run(status, room.id);
+  // 수동으로 바꾼 상태이므로, 취침 때문에 닫혔다는 표시는 지운다 — 그래야
+  // 나중에 기상해도 방금 수동으로 정한 상태를 취침 기상이 덮어쓰지 않는다.
+  db.prepare('UPDATE rooms SET access_status = ?, closed_by_sleep = 0 WHERE id = ?').run(status, room.id);
   const updatedRoom = db.prepare('SELECT * FROM rooms WHERE id = ?').get(room.id);
   broadcastRooms();
   res.json({ room: publicRoom(updatedRoom) });

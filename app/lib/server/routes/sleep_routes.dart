@@ -33,6 +33,17 @@ Router buildSleepRouter(Database db, String jwtSecret, RealtimeHub hub) {
     final sleepAt = ServerTime.nowIso();
     db.execute('INSERT INTO sleep_records (user_id, sleep_at, created_at) VALUES (?, ?, ?)', [user['id'], sleepAt, sleepAt]);
     db.execute("UPDATE users SET sleep_status = 'sleeping' WHERE id = ?", [user['id']]);
+
+    // 자기 방이 있고 열려 있으면 취침과 함께 자동으로 출입을 막는다.
+    final ownedRoom = db.select('SELECT * FROM rooms WHERE owner_id = ?', [user['id']]);
+    if (ownedRoom.isNotEmpty && ownedRoom.first['access_status'] == 'open') {
+      db.execute(
+        "UPDATE rooms SET access_status = 'closed', closed_by_sleep = 1 WHERE id = ?",
+        [ownedRoom.first['id']],
+      );
+      hub.broadcastRooms();
+    }
+
     hub.broadcastStatus();
 
     final record = db.select('SELECT * FROM sleep_records WHERE id = ?', [db.lastInsertRowId]).first;
@@ -49,6 +60,20 @@ Router buildSleepRouter(Database db, String jwtSecret, RealtimeHub hub) {
     final wakeAt = ServerTime.nowIso();
     db.execute('UPDATE sleep_records SET wake_at = ? WHERE id = ?', [wakeAt, open.first['id']]);
     db.execute("UPDATE users SET sleep_status = 'awake' WHERE id = ?", [user['id']]);
+
+    // 취침 때문에 자동으로 닫혔던 방만 기상과 함께 다시 연다.
+    final ownedRoom = db.select(
+      'SELECT * FROM rooms WHERE owner_id = ? AND closed_by_sleep = 1',
+      [user['id']],
+    );
+    if (ownedRoom.isNotEmpty) {
+      db.execute(
+        "UPDATE rooms SET access_status = 'open', closed_by_sleep = 0 WHERE id = ?",
+        [ownedRoom.first['id']],
+      );
+      hub.broadcastRooms();
+    }
+
     hub.broadcastStatus();
 
     final record = db.select('SELECT * FROM sleep_records WHERE id = ?', [open.first['id']]).first;

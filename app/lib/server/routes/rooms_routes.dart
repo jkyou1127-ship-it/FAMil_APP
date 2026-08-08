@@ -111,7 +111,8 @@ Router buildRoomsRouter(Database db, String jwtSecret, RealtimeHub hub) {
       return jsonError("status는 'open' 또는 'closed'여야 합니다.");
     }
 
-    db.execute('UPDATE rooms SET access_status = ? WHERE id = ?', [status, id]);
+    // 수동으로 바꾼 상태이므로, 취침 때문에 닫혔다는 표시는 지운다.
+    db.execute('UPDATE rooms SET access_status = ?, closed_by_sleep = 0 WHERE id = ?', [status, id]);
     final updated = db.select('SELECT * FROM rooms WHERE id = ?', [id]).first;
     hub.broadcastRooms();
     return jsonResponse({'room': publicRoom(updated)});

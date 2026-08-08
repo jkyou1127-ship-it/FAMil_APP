@@ -2,7 +2,7 @@ const express = require('express');
 const db = require('../db');
 const { nowIso, dayjs } = require('../utils/time');
 const { authRequired } = require('../middleware/auth');
-const { broadcastStatus } = require('../sockets/io');
+const { broadcastStatus, broadcastRooms } = require('../sockets/io');
 
 const router = express.Router();
 
@@ -31,6 +31,15 @@ router.post('/start', authRequired, (req, res) => {
     .run(req.user.id, sleepAt, sleepAt);
   db.prepare("UPDATE users SET sleep_status = 'sleeping' WHERE id = ?").run(req.user.id);
 
+  // 자기 방이 있고 열려 있으면 취침과 함께 자동으로 출입을 막는다. 이미
+  // (다른 이유로) 닫혀 있던 방은 건드리지 않고, 그래서 기상 시에도 이
+  // 취침 때문에 닫힌 방만 다시 연다 — 수동으로 닫아둔 방까지 열리지 않게.
+  const ownedRoom = db.prepare('SELECT * FROM rooms WHERE owner_id = ?').get(req.user.id);
+  if (ownedRoom && ownedRoom.access_status === 'open') {
+    db.prepare('UPDATE rooms SET access_status = ?, closed_by_sleep = 1 WHERE id = ?').run('closed', ownedRoom.id);
+    broadcastRooms();
+  }
+
   broadcastStatus();
   const record = db.prepare('SELECT * FROM sleep_records WHERE id = ?').get(info.lastInsertRowid);
   res.status(201).json({ record: serializeRecord(record) });
@@ -46,6 +55,13 @@ router.post('/wake', authRequired, (req, res) => {
   const wakeAt = nowIso();
   db.prepare('UPDATE sleep_records SET wake_at = ? WHERE id = ?').run(wakeAt, open.id);
   db.prepare("UPDATE users SET sleep_status = 'awake' WHERE id = ?").run(req.user.id);
+
+  // 취침 때문에 자동으로 닫혔던 방만 기상과 함께 다시 연다.
+  const ownedRoom = db.prepare('SELECT * FROM rooms WHERE owner_id = ? AND closed_by_sleep = 1').get(req.user.id);
+  if (ownedRoom) {
+    db.prepare('UPDATE rooms SET access_status = ?, closed_by_sleep = 0 WHERE id = ?').run('open', ownedRoom.id);
+    broadcastRooms();
+  }
 
   broadcastStatus();
   const record = db.prepare('SELECT * FROM sleep_records WHERE id = ?').get(open.id);

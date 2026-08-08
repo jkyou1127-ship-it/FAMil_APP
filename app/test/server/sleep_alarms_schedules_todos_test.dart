@@ -76,6 +76,45 @@ void main() {
     expect((res['body']['records'] as List).length, 1);
   });
 
+  test('취침하면 소유한 방이 자동으로 출입금지로 바뀌고, 기상하면 다시 열린다', () async {
+    final adminRes = await req('POST', '/auth/register', body: {
+      'username': 'sleeproom_admin',
+      'password': 'pass1234',
+      'displayName': 'admin',
+    });
+    final adminToken = adminRes['body']['token'] as String;
+
+    final ownerRes = await req('POST', '/auth/register', body: {
+      'username': 'sleeproom_owner',
+      'password': 'pass1234',
+      'displayName': 'owner',
+    });
+    final ownerToken = ownerRes['body']['token'] as String;
+    final ownerId = ownerRes['body']['user']['id'] as int;
+
+    final roomRes = await req('POST', '/rooms', token: adminToken, body: {'name': '방'});
+    final roomId = roomRes['body']['room']['id'] as int;
+    await req('POST', '/rooms/$roomId/assign-owner', token: adminToken, body: {'userId': ownerId});
+
+    Future<String> roomAccess() async {
+      final res = await req('GET', '/rooms', token: ownerToken);
+      final rooms = res['body']['rooms'] as List;
+      return rooms.firstWhere((r) => r['id'] == roomId)['accessStatus'] as String;
+    }
+
+    await req('POST', '/sleep/start', token: ownerToken);
+    expect(await roomAccess(), 'closed');
+
+    await req('POST', '/sleep/wake', token: ownerToken);
+    expect(await roomAccess(), 'open');
+
+    // 수동으로 닫아둔 방은 기상해도 자동으로 열리지 않는다.
+    await req('PATCH', '/rooms/$roomId/access', token: ownerToken, body: {'status': 'closed'});
+    await req('POST', '/sleep/start', token: ownerToken);
+    await req('POST', '/sleep/wake', token: ownerToken);
+    expect(await roomAccess(), 'closed');
+  });
+
   test('요일별 반복 알람 생성/수정/삭제', () async {
     final token = await registerAndGetToken('alarmuser');
 

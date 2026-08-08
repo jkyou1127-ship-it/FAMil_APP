@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS rooms (
   name TEXT NOT NULL,
   owner_id INTEGER,
   access_status TEXT NOT NULL DEFAULT 'open',
+  closed_by_sleep INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
 );
@@ -170,6 +171,11 @@ CREATE INDEX IF NOT EXISTS idx_shopping_items_bought ON shopping_items (bought, 
 const userColumns = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
 if (!userColumns.includes('sleep_sound_id')) {
   db.exec("ALTER TABLE users ADD COLUMN sleep_sound_id TEXT NOT NULL DEFAULT 'lullaby1'");
+}
+
+const roomColumns = db.prepare('PRAGMA table_info(rooms)').all().map((c) => c.name);
+if (!roomColumns.includes('closed_by_sleep')) {
+  db.exec('ALTER TABLE rooms ADD COLUMN closed_by_sleep INTEGER NOT NULL DEFAULT 0');
 }
 
 module.exports = db;

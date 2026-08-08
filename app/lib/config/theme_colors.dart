@@ -15,6 +15,9 @@ const kThemeColors = [
   ThemeColorOption('orange', '오렌지', Color(0xFFE65100)),
   ThemeColorOption('pink', '핑크', Color(0xFFD81B60)),
   ThemeColorOption('teal', '틸', Color(0xFF00796B)),
+  ThemeColorOption('red', '레드', Color(0xFFC62828)),
+  ThemeColorOption('indigo', '인디고', Color(0xFF3949AB)),
+  ThemeColorOption('brown', '브라운', Color(0xFF6D4C41)),
 ];
 
 Color themeColorFor(String id) {
