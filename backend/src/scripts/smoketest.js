@@ -13,8 +13,8 @@ process.env.DB_PATH = dbPath;
 process.env.JWT_SECRET = 'smoketest-secret';
 process.env.PORT = '4501';
 
-const { server, io } = require('../server');
-const { io: ioClient } = require('socket.io-client');
+const { server } = require('../server');
+const WebSocket = require('ws');
 
 const BASE = 'http://localhost:4501';
 let failures = 0;
@@ -46,11 +46,39 @@ async function api(method, urlPath, { token, body } = {}) {
   return { status: res.status, json };
 }
 
+// Socket.IO client 대신 raw WebSocket으로 실시간 프로토콜을 직접 구사한다
+// (backend/src/sockets/ws_hub.js와 동일한 {event, data} 봉투).
 function connectSocket(token) {
   return new Promise((resolve, reject) => {
-    const socket = ioClient(BASE, { auth: { token }, transports: ['websocket'] });
-    socket.on('connect', () => resolve(socket));
-    socket.on('connect_error', reject);
+    const ws = new WebSocket(`ws://localhost:4501/realtime?token=${encodeURIComponent(token)}`);
+    const onceHandlers = new Map();
+
+    ws.on('message', (raw) => {
+      let message;
+      try {
+        message = JSON.parse(raw.toString());
+      } catch (err) {
+        return;
+      }
+      const handlers = onceHandlers.get(message.event);
+      if (handlers && handlers.length) handlers.shift()(message.data);
+    });
+
+    ws.once('open', () => {
+      resolve({
+        once(event, cb) {
+          if (!onceHandlers.has(event)) onceHandlers.set(event, []);
+          onceHandlers.get(event).push(cb);
+        },
+        emit(event, data) {
+          ws.send(JSON.stringify({ event, data }));
+        },
+        close() {
+          ws.close();
+        },
+      });
+    });
+    ws.once('error', reject);
   });
 }
 

@@ -1,32 +1,21 @@
-const db = require('../db');
-const { publicUser } = require('../utils/serialize');
-
-let ioInstance = null;
-
-function setIo(io) {
-  ioInstance = io;
-}
-
-function getIo() {
-  return ioInstance;
-}
+// 다른 라우트 모듈(rooms.js, users.js, lottery.js 등)이 실시간 계층에 접근하는
+// 창구. 내부 구현(ws_hub)이 바뀌어도 이 파일의 함수 시그니처만 유지하면 된다.
+const hub = require('./ws_hub');
 
 function emitToUser(userId, event, payload) {
-  if (!ioInstance) return;
-  ioInstance.to(`user:${userId}`).emit(event, payload);
+  hub.emitToUser(userId, event, payload);
+}
+
+function broadcast(event, payload) {
+  hub.broadcast(event, payload);
 }
 
 function broadcastStatus() {
-  if (!ioInstance) return;
-  const users = db.prepare('SELECT * FROM users ORDER BY id').all().map(publicUser);
-  ioInstance.emit('status:update', { users });
+  hub.broadcastStatus();
 }
 
 function broadcastRooms() {
-  if (!ioInstance) return;
-  const { publicRoom } = require('../utils/serialize');
-  const rooms = db.prepare('SELECT * FROM rooms ORDER BY id').all().map(publicRoom);
-  ioInstance.emit('rooms:update', { rooms });
+  hub.broadcastRooms();
 }
 
-module.exports = { setIo, getIo, emitToUser, broadcastStatus, broadcastRooms };
+module.exports = { emitToUser, broadcast, broadcastStatus, broadcastRooms };

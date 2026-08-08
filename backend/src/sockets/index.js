@@ -1,86 +1,48 @@
-const jwt = require('jsonwebtoken');
 const db = require('../db');
 const { nowIso } = require('../utils/time');
 const { sendPush } = require('../utils/push');
-const { setIo, broadcastStatus } = require('./io');
+const hub = require('./ws_hub');
 
-// userId -> number of concurrently connected sockets (tracked in-process,
-// independent of socket.io's own room bookkeeping so presence stays correct
-// even if a user has multiple devices/tabs open).
-const onlineCounts = new Map();
+/// Socket.IO를 raw WebSocket + JSON 이벤트 봉투({event, data[, ackId]})로 대체한
+/// 실시간 계층. Dart로 유지보수 가능한 Socket.IO 서버 구현체가 없어서, 두
+/// 백엔드(Node/Dart)가 같은 프로토콜을 쓰도록 이쪽도 동일하게 맞췄다.
+function initSockets(server) {
+  hub.attachWebSocketServer(server);
 
-function initSockets(io) {
-  setIo(io);
-
-  io.use((socket, next) => {
-    const token = socket.handshake.auth && socket.handshake.auth.token;
-    if (!token) return next(new Error('unauthorized'));
-    try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET);
-      const user = db.prepare('SELECT id FROM users WHERE id = ?').get(payload.id);
-      if (!user) return next(new Error('unauthorized'));
-      socket.userId = user.id;
-      next();
-    } catch (err) {
-      next(new Error('unauthorized'));
+  hub.on('message:send', (userId, data, ack) => {
+    const receiverId = data && data.receiverId;
+    const content = data && String(data.content || '').trim();
+    if (!receiverId || !content) {
+      ack({ error: '메시지 내용을 입력해주세요.' });
+      return;
     }
-  });
+    const receiver = db.prepare('SELECT id FROM users WHERE id = ?').get(receiverId);
+    if (!receiver) {
+      ack({ error: '상대방을 찾을 수 없습니다.' });
+      return;
+    }
 
-  io.on('connection', (socket) => {
-    const userId = socket.userId;
-    socket.join(`user:${userId}`);
+    const createdAt = nowIso();
+    const info = db
+      .prepare('INSERT INTO messages (sender_id, receiver_id, content, created_at) VALUES (?, ?, ?, ?)')
+      .run(userId, receiverId, content, createdAt);
+    const message = {
+      id: info.lastInsertRowid,
+      senderId: userId,
+      receiverId,
+      content,
+      createdAt,
+      readAt: null,
+    };
+    hub.emitToUser(receiverId, 'message:new', message);
+    hub.emitToUser(userId, 'message:new', message);
+    ack({ message });
 
-    onlineCounts.set(userId, (onlineCounts.get(userId) || 0) + 1);
-    db.prepare('UPDATE users SET online = 1 WHERE id = ?').run(userId);
-    broadcastStatus();
-
-    socket.on('message:send', (payload, ack) => {
-      const receiverId = payload && payload.receiverId;
-      const content = payload && String(payload.content || '').trim();
-      if (!receiverId || !content) {
-        if (typeof ack === 'function') ack({ error: '메시지 내용을 입력해주세요.' });
-        return;
-      }
-      const receiver = db.prepare('SELECT id FROM users WHERE id = ?').get(receiverId);
-      if (!receiver) {
-        if (typeof ack === 'function') ack({ error: '상대방을 찾을 수 없습니다.' });
-        return;
-      }
-      const createdAt = nowIso();
-      const info = db
-        .prepare(
-          `INSERT INTO messages (sender_id, receiver_id, content, created_at) VALUES (?, ?, ?, ?)`
-        )
-        .run(userId, receiverId, content, createdAt);
-      const message = {
-        id: info.lastInsertRowid,
-        senderId: userId,
-        receiverId,
-        content,
-        createdAt,
-        readAt: null,
-      };
-      io.to(`user:${receiverId}`).emit('message:new', message);
-      io.to(`user:${userId}`).emit('message:new', message);
-      if (typeof ack === 'function') ack({ message });
-
-      const sender = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId);
-      sendPush(receiverId, {
-        title: sender ? sender.display_name : '새 메시지',
-        body: content,
-        data: { type: 'message', senderId: userId },
-      });
-    });
-
-    socket.on('disconnect', () => {
-      const remaining = (onlineCounts.get(userId) || 1) - 1;
-      if (remaining <= 0) {
-        onlineCounts.delete(userId);
-        db.prepare('UPDATE users SET online = 0 WHERE id = ?').run(userId);
-        broadcastStatus();
-      } else {
-        onlineCounts.set(userId, remaining);
-      }
+    const sender = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId);
+    sendPush(receiverId, {
+      title: sender ? sender.display_name : '새 메시지',
+      body: content,
+      data: { type: 'message', senderId: userId },
     });
   });
 }

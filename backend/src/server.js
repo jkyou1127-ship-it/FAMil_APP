@@ -3,7 +3,6 @@ const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
-const { Server } = require('socket.io');
 
 const { initSockets } = require('./sockets');
 const { startCronJobs } = require('./cron');
@@ -23,7 +22,6 @@ const todoRoutes = require('./routes/todos');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: process.env.CORS_ORIGIN || '*' } });
 
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(express.json());
@@ -50,7 +48,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: '서버 오류가 발생했습니다.' });
 });
 
-initSockets(io);
+initSockets(server);
 startCronJobs();
 
 const PORT = process.env.PORT || 4000;
@@ -59,4 +57,4 @@ server.listen(PORT, () => {
   startDiscoveryResponder(PORT);
 });
 
-module.exports = { app, server, io };
+module.exports = { app, server };

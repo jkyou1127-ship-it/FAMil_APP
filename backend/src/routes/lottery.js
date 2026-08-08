@@ -2,7 +2,7 @@ const express = require('express');
 const db = require('../db');
 const { nowIso } = require('../utils/time');
 const { authRequired } = require('../middleware/auth');
-const { getIo } = require('../sockets/io');
+const { broadcast } = require('../sockets/io');
 
 const router = express.Router();
 
@@ -29,8 +29,7 @@ router.post('/draw', authRequired, (req, res) => {
     createdAt,
   };
 
-  const io = getIo();
-  if (io) io.emit('lottery:drawn', result);
+  broadcast('lottery:drawn', result);
   res.status(201).json({ result });
 });
 
