@@ -7,6 +7,7 @@ import 'services/api_client.dart';
 import 'services/auth_provider.dart';
 import 'services/kst_time.dart';
 import 'services/local_notifications_service.dart';
+import 'services/local_server_controller.dart';
 import 'services/push_service.dart';
 import 'services/server_config_service.dart';
 import 'services/socket_service.dart';
@@ -38,6 +39,7 @@ class _FamilAppState extends State<FamilApp> {
   late final AlarmScheduler _alarmScheduler;
   late final PushService _pushService;
   late final ThemeController _themeController;
+  late final LocalServerController _localServerController;
 
   @override
   void initState() {
@@ -49,6 +51,7 @@ class _FamilAppState extends State<FamilApp> {
     _alarmScheduler = AlarmScheduler(localNotifications: _localNotifications);
     _pushService = PushService(localNotifications: _localNotifications);
     _themeController = ThemeController();
+    _localServerController = LocalServerController();
     _localNotifications.init();
     _auth.bootstrap();
     _themeController.load();
@@ -64,6 +67,7 @@ class _FamilAppState extends State<FamilApp> {
         Provider<AlarmScheduler>.value(value: _alarmScheduler),
         Provider<PushService>.value(value: _pushService),
         ChangeNotifierProvider<ThemeController>.value(value: _themeController),
+        ChangeNotifierProvider<LocalServerController>.value(value: _localServerController),
       ],
       child: Consumer<ThemeController>(
         builder: (context, themeController, _) => MaterialApp(

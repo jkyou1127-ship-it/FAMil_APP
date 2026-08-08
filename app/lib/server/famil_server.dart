@@ -12,6 +12,7 @@ import 'realtime/realtime_hub.dart';
 import 'realtime/ws_route.dart';
 import 'routes/alarms_routes.dart';
 import 'routes/auth_routes.dart';
+import 'routes/chat_rooms_routes.dart';
 import 'routes/messages_routes.dart';
 import 'routes/rooms_routes.dart';
 import 'routes/schedules_routes.dart';
@@ -53,6 +54,7 @@ class FamilServer {
     router.mount('/users', buildUsersRouter(db, jwtSecret, realtime, uploadsDir: uploadsDir).call);
     router.mount('/rooms', buildRoomsRouter(db, jwtSecret, realtime).call);
     router.mount('/messages', buildMessagesRouter(db, jwtSecret, realtime).call);
+    router.mount('/chat-rooms', buildChatRoomsRouter(db, jwtSecret, realtime).call);
     router.mount('/suggestions', buildSuggestionsRouter(db, jwtSecret).call);
     router.mount('/status', buildStatusRouter(db, jwtSecret).call);
     router.mount('/sleep', buildSleepRouter(db, jwtSecret, realtime).call);

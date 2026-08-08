@@ -116,12 +116,42 @@ CREATE TABLE IF NOT EXISTS device_tokens (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS chat_rooms (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  created_by INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS chat_room_members (
+  room_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  joined_at TEXT NOT NULL,
+  last_read_at TEXT,
+  PRIMARY KEY (room_id, user_id),
+  FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS chat_room_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  room_id INTEGER NOT NULL,
+  sender_id INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
+  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_messages_pair ON messages (sender_id, receiver_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_device_tokens_user ON device_tokens (user_id);
 CREATE INDEX IF NOT EXISTS idx_knocks_room ON knocks (room_id, status);
 CREATE INDEX IF NOT EXISTS idx_todos_user ON todos (user_id, completed);
 CREATE INDEX IF NOT EXISTS idx_schedules_user_date ON schedules (user_id, date);
 CREATE INDEX IF NOT EXISTS idx_alarms_user ON alarms (user_id);
+CREATE INDEX IF NOT EXISTS idx_chat_room_members_user ON chat_room_members (user_id);
+CREATE INDEX IF NOT EXISTS idx_chat_room_messages_room ON chat_room_messages (room_id, created_at);
 ''');
 
   return db;
