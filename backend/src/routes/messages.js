@@ -3,6 +3,7 @@ const db = require('../db');
 const { nowIso } = require('../utils/time');
 const { authRequired } = require('../middleware/auth');
 const { emitToUser } = require('../sockets/io');
+const { sendPush } = require('../utils/push');
 
 const router = express.Router();
 
@@ -108,6 +109,11 @@ router.post('/', authRequired, (req, res) => {
   });
   emitToUser(receiverId, 'message:new', message);
   emitToUser(req.user.id, 'message:new', message);
+  sendPush(receiverId, {
+    title: req.user.display_name,
+    body: trimmed,
+    data: { type: 'message', senderId: req.user.id },
+  });
   res.status(201).json({ message });
 });
 

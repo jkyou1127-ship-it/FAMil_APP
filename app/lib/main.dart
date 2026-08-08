@@ -7,6 +7,7 @@ import 'services/api_client.dart';
 import 'services/auth_provider.dart';
 import 'services/kst_time.dart';
 import 'services/local_notifications_service.dart';
+import 'services/push_service.dart';
 import 'services/server_config_service.dart';
 import 'services/socket_service.dart';
 import 'screens/auth/login_screen.dart';
@@ -34,6 +35,7 @@ class _FamilAppState extends State<FamilApp> {
   late final AuthProvider _auth;
   late final LocalNotificationsService _localNotifications;
   late final AlarmScheduler _alarmScheduler;
+  late final PushService _pushService;
 
   @override
   void initState() {
@@ -43,6 +45,7 @@ class _FamilAppState extends State<FamilApp> {
     _auth = AuthProvider(api: _api, socket: _socket);
     _localNotifications = LocalNotificationsService();
     _alarmScheduler = AlarmScheduler(localNotifications: _localNotifications);
+    _pushService = PushService(localNotifications: _localNotifications);
     _localNotifications.init();
     _auth.bootstrap();
   }
@@ -55,6 +58,7 @@ class _FamilAppState extends State<FamilApp> {
         Provider<SocketService>.value(value: _socket),
         ChangeNotifierProvider<AuthProvider>.value(value: _auth),
         Provider<AlarmScheduler>.value(value: _alarmScheduler),
+        Provider<PushService>.value(value: _pushService),
       ],
       child: MaterialApp(
         title: 'FAMil APP',

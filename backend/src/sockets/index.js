@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const db = require('../db');
 const { nowIso } = require('../utils/time');
+const { sendPush } = require('../utils/push');
 const { setIo, broadcastStatus } = require('./io');
 
 // userId -> number of concurrently connected sockets (tracked in-process,
@@ -62,6 +63,13 @@ function initSockets(io) {
       io.to(`user:${receiverId}`).emit('message:new', message);
       io.to(`user:${userId}`).emit('message:new', message);
       if (typeof ack === 'function') ack({ message });
+
+      const sender = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId);
+      sendPush(receiverId, {
+        title: sender ? sender.display_name : '새 메시지',
+        body: content,
+        data: { type: 'message', senderId: userId },
+      });
     });
 
     socket.on('disconnect', () => {

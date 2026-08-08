@@ -8,6 +8,7 @@ import '../../models/lottery.dart';
 import '../../services/alarm_scheduler.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_provider.dart';
+import '../../services/push_service.dart';
 import '../../services/socket_service.dart';
 import '../alarms/alarm_list_screen.dart';
 import '../alarms/alarm_ring_screen.dart';
@@ -45,6 +46,8 @@ class _HomeShellState extends State<HomeShell> {
     _alarmScheduler.onFire = _onAlarmFire;
     _alarmScheduler.refresh(context.read<ApiClient>());
     _alarmScheduler.start();
+
+    context.read<PushService>().init(context.read<ApiClient>());
   }
 
   @override

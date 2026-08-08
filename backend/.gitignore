@@ -7,3 +7,4 @@ uploads/profiles/*
 !uploads/profiles/.gitkeep
 .env
 npm-debug.log*
+firebase-service-account*.json

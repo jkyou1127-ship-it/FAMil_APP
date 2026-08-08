@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1040298064388",
+    "project_id": "famil-app",
+    "storage_bucket": "famil-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1040298064388:android:795ce7fc9bf4f9fd079351",
+        "android_client_info": {
+          "package_name": "com.famil.famil_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDtg-WNqYdeK_AWv7rg7yv7kXdrSihtp0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

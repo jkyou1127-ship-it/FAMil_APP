@@ -123,4 +123,20 @@ class LocalNotificationsService {
       await _plugin.cancel(id: alarmId * 10 + day);
     }
   }
+
+  NotificationDetails get _pushDetails => const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'famil_push',
+          '알림',
+          channelDescription: 'FAMil APP 노크/메신저 알림',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      );
+
+  /// 노크/메신저 등 FCM으로 도착한 알림을 앱이 포그라운드에 있을 때도 화면에 띄운다.
+  Future<void> showPush({required int id, required String title, required String body}) async {
+    if (!_ready) return;
+    await _plugin.show(id: id, title: title, body: body, notificationDetails: _pushDetails);
+  }
 }

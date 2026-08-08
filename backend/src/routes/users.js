@@ -4,6 +4,7 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const db = require('../db');
+const { nowIso } = require('../utils/time');
 const { publicUser } = require('../utils/serialize');
 const { authRequired, adminRequired } = require('../middleware/auth');
 const { broadcastStatus } = require('../sockets/io');
@@ -57,6 +58,19 @@ router.post('/me/photo', authRequired, (req, res) => {
     broadcastStatus();
     res.json({ user: publicUser(user) });
   });
+});
+
+// 모바일 푸시 알림(FCM)을 받기 위한 기기 토큰을 등록/갱신한다.
+router.post('/me/device-token', authRequired, (req, res) => {
+  const { token, platform } = req.body || {};
+  if (!token) return res.status(400).json({ error: '기기 토큰이 필요합니다.' });
+
+  db.prepare(
+    `INSERT INTO device_tokens (user_id, token, platform, created_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT(token) DO UPDATE SET user_id = excluded.user_id, platform = excluded.platform`
+  ).run(req.user.id, token, platform || 'android', nowIso());
+
+  res.status(204).end();
 });
 
 // 회원 탈퇴: 비밀번호 재확인 후 계정과 관련 데이터를 모두 삭제한다.

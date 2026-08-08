@@ -114,7 +114,17 @@ CREATE TABLE IF NOT EXISTS lottery_draws (
   FOREIGN KEY (drawn_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS device_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  platform TEXT NOT NULL DEFAULT 'android',
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_messages_pair ON messages (sender_id, receiver_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_device_tokens_user ON device_tokens (user_id);
 CREATE INDEX IF NOT EXISTS idx_knocks_room ON knocks (room_id, status);
 CREATE INDEX IF NOT EXISTS idx_todos_user ON todos (user_id, completed);
 CREATE INDEX IF NOT EXISTS idx_schedules_user_date ON schedules (user_id, date);

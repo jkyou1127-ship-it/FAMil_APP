@@ -48,6 +48,8 @@ dependencies:
   permission_handler: ^13.0.0
   shared_preferences: ^2.5.5
   file_selector: ^1.1.0
+  firebase_core: ^4.13.0
+  firebase_messaging: ^16.5.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

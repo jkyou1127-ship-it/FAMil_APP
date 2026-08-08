@@ -4,6 +4,7 @@ const { nowIso } = require('../utils/time');
 const { publicRoom, publicUser } = require('../utils/serialize');
 const { authRequired, adminRequired } = require('../middleware/auth');
 const { emitToUser, broadcastRooms, broadcastStatus } = require('../sockets/io');
+const { sendPush } = require('../utils/push');
 
 const router = express.Router();
 
@@ -101,6 +102,11 @@ router.post('/:id/knock', authRequired, (req, res) => {
     respondedAt: null,
   };
   emitToUser(room.owner_id, 'knock:new', knock);
+  sendPush(room.owner_id, {
+    title: '온라인 노크',
+    body: `${req.user.display_name}님이 "${room.name}" 방에 노크했습니다.`,
+    data: { type: 'knock', knockId: knock.id },
+  });
   res.status(201).json({ knock });
 });
 
@@ -177,6 +183,11 @@ router.post('/knocks/:knockId/respond', authRequired, (req, res) => {
 
   const knock = serializeKnock({ ...row, status, responded_at: respondedAt });
   emitToUser(row.requester_id, 'knock:responded', knock);
+  sendPush(row.requester_id, {
+    title: '온라인 노크 응답',
+    body: `"${row.room_name}" 방 노크가 ${approve ? '승인' : '거절'}되었습니다.`,
+    data: { type: 'knock_responded', knockId: knock.id },
+  });
   res.json({ knock });
 });
 
