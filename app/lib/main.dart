@@ -10,6 +10,7 @@ import 'services/local_notifications_service.dart';
 import 'services/push_service.dart';
 import 'services/server_config_service.dart';
 import 'services/socket_service.dart';
+import 'services/theme_controller.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_shell.dart';
 
@@ -36,6 +37,7 @@ class _FamilAppState extends State<FamilApp> {
   late final LocalNotificationsService _localNotifications;
   late final AlarmScheduler _alarmScheduler;
   late final PushService _pushService;
+  late final ThemeController _themeController;
 
   @override
   void initState() {
@@ -46,8 +48,10 @@ class _FamilAppState extends State<FamilApp> {
     _localNotifications = LocalNotificationsService();
     _alarmScheduler = AlarmScheduler(localNotifications: _localNotifications);
     _pushService = PushService(localNotifications: _localNotifications);
+    _themeController = ThemeController();
     _localNotifications.init();
     _auth.bootstrap();
+    _themeController.load();
   }
 
   @override
@@ -59,26 +63,37 @@ class _FamilAppState extends State<FamilApp> {
         ChangeNotifierProvider<AuthProvider>.value(value: _auth),
         Provider<AlarmScheduler>.value(value: _alarmScheduler),
         Provider<PushService>.value(value: _pushService),
+        ChangeNotifierProvider<ThemeController>.value(value: _themeController),
       ],
-      child: MaterialApp(
-        title: 'FAMil APP',
-        scaffoldMessengerKey: rootScaffoldMessengerKey,
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3D6BFF)),
-          useMaterial3: true,
-        ),
-        home: Consumer<AuthProvider>(
-          builder: (context, auth, _) {
-            switch (auth.status) {
-              case AuthStatus.unknown:
-                return const _SplashScreen();
-              case AuthStatus.signedOut:
-                return const LoginScreen();
-              case AuthStatus.signedIn:
-                return const HomeShell();
-            }
-          },
+      child: Consumer<ThemeController>(
+        builder: (context, themeController, _) => MaterialApp(
+          title: 'FAMil APP',
+          scaffoldMessengerKey: rootScaffoldMessengerKey,
+          debugShowCheckedModeBanner: false,
+          themeMode: themeController.mode,
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3D6BFF)),
+            useMaterial3: true,
+          ),
+          darkTheme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF3D6BFF),
+              brightness: Brightness.dark,
+            ),
+            useMaterial3: true,
+          ),
+          home: Consumer<AuthProvider>(
+            builder: (context, auth, _) {
+              switch (auth.status) {
+                case AuthStatus.unknown:
+                  return const _SplashScreen();
+                case AuthStatus.signedOut:
+                  return const LoginScreen();
+                case AuthStatus.signedIn:
+                  return const HomeShell();
+              }
+            },
+          ),
         ),
       ),
     );
