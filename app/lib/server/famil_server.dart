@@ -10,6 +10,7 @@ import 'db/schema.dart';
 import 'realtime/realtime_hub.dart';
 import 'realtime/ws_route.dart';
 import 'routes/auth_routes.dart';
+import 'routes/rooms_routes.dart';
 import 'routes/users_routes.dart';
 import 'utils/json_response.dart';
 import 'utils/kst_time.dart';
@@ -41,6 +42,7 @@ class FamilServer {
     final router = Router();
     router.mount('/auth', buildAuthRouter(db, jwtSecret).call);
     router.mount('/users', buildUsersRouter(db, jwtSecret, realtime, uploadsDir: uploadsDir).call);
+    router.mount('/rooms', buildRoomsRouter(db, jwtSecret, realtime).call);
     router.mount('/uploads', createStaticHandler(uploadsDir));
     router.get('/health', (Request request) => jsonResponse({'ok': true, 'time': DateTime.now().toUtc().toIso8601String()}));
     router.get('/realtime', buildRealtimeHandler(db, jwtSecret, realtime));
