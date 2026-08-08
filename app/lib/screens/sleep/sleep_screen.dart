@@ -4,7 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../config/alarm_sounds.dart';
+import '../../config/sleep_sounds.dart';
 import '../../models/sleep_record.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_provider.dart';
@@ -74,7 +74,8 @@ class _SleepScreenState extends State<SleepScreen> {
       final record = SleepRecord.fromJson(Map<String, dynamic>.from(res['record'] as Map));
       if (mounted) setState(() => _open = record);
       if (me?.sleepSoundEnabled ?? true) {
-        await _player.play(AssetSource(kSleepSoundAsset.replaceFirst('assets/', '')));
+        final asset = sleepSoundAssetFor(me?.sleepSoundId ?? 'lullaby1');
+        await _player.play(AssetSource(asset.replaceFirst('assets/', '')));
         _stopTimer?.cancel();
         _stopTimer = Timer(Duration(minutes: _timerMinutes), () => _player.stop());
       }
@@ -117,6 +118,15 @@ class _SleepScreenState extends State<SleepScreen> {
         _stopTimer?.cancel();
         await _player.stop();
       }
+      if (mounted) await context.read<AuthProvider>().refreshMe();
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  Future<void> _selectSound(String soundId) async {
+    try {
+      await context.read<ApiClient>().patch('/sleep/sound', {'enabled': true, 'soundId': soundId});
       if (mounted) await context.read<AuthProvider>().refreshMe();
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
@@ -192,6 +202,17 @@ class _SleepScreenState extends State<SleepScreen> {
                           onChanged: _toggleSound,
                         ),
                         if (soundEnabled) ...[
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            initialValue: me?.sleepSoundId ?? kSleepSounds.first.id,
+                            decoration: const InputDecoration(labelText: '곡 선택', border: OutlineInputBorder()),
+                            items: kSleepSounds
+                                .map((s) => DropdownMenuItem(value: s.id, child: Text(s.label)))
+                                .toList(),
+                            onChanged: (id) {
+                              if (id != null) _selectSound(id);
+                            },
+                          ),
                           const SizedBox(height: 8),
                           Text('재생 시간: $_timerMinutes분'),
                           Slider(

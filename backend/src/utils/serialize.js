@@ -8,6 +8,7 @@ function publicUser(u) {
     profilePhoto: u.profile_photo,
     sleepStatus: u.sleep_status,
     sleepSoundEnabled: !!u.sleep_sound_enabled,
+    sleepSoundId: u.sleep_sound_id || 'lullaby1',
     online: !!u.online,
     roomId: u.room_id,
     createdAt: u.created_at,

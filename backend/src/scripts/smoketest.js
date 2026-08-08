@@ -202,6 +202,10 @@ async function main() {
   assert(r.status === 200 && r.json.record.durationMinutes >= 0, '기상 시 잔 시간이 계산된다');
   r = await api('PATCH', '/sleep/sound', { token: guestToken, body: { enabled: false } });
   assert(r.status === 200 && r.json.sleepSoundEnabled === false, '수면 유도 노래 off 설정이 저장된다');
+  r = await api('PATCH', '/sleep/sound', { token: guestToken, body: { enabled: true, soundId: 'lullaby2' } });
+  assert(r.status === 200 && r.json.sleepSoundId === 'lullaby2', '수면 유도 노래 곡을 선택할 수 있다');
+  r = await api('GET', '/auth/me', { token: guestToken });
+  assert(r.json.user.sleepSoundId === 'lullaby2', '선택한 곡이 프로필에 반영된다');
 
   // ---- Alarms ----
   r = await api('POST', '/alarms', {

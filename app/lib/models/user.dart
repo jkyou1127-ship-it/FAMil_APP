@@ -6,6 +6,7 @@ class AppUser {
   final String? profilePhoto;
   final String sleepStatus; // 'awake' | 'sleeping'
   final bool sleepSoundEnabled;
+  final String sleepSoundId;
   final bool online;
   final int? roomId;
   final String createdAt;
@@ -18,6 +19,7 @@ class AppUser {
     required this.profilePhoto,
     required this.sleepStatus,
     required this.sleepSoundEnabled,
+    required this.sleepSoundId,
     required this.online,
     required this.roomId,
     required this.createdAt,
@@ -31,6 +33,7 @@ class AppUser {
         profilePhoto: json['profilePhoto'] as String?,
         sleepStatus: json['sleepStatus'] as String? ?? 'awake',
         sleepSoundEnabled: json['sleepSoundEnabled'] as bool? ?? true,
+        sleepSoundId: json['sleepSoundId'] as String? ?? 'lullaby1',
         online: json['online'] as bool? ?? false,
         roomId: json['roomId'] as int?,
         createdAt: json['createdAt'] as String? ?? '',

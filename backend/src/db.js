@@ -131,4 +131,10 @@ CREATE INDEX IF NOT EXISTS idx_schedules_user_date ON schedules (user_id, date);
 CREATE INDEX IF NOT EXISTS idx_alarms_user ON alarms (user_id);
 `);
 
+// 기존 DB 파일에 새 컬럼을 안전하게 추가한다 (이미 있으면 건너뛴다).
+const userColumns = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+if (!userColumns.includes('sleep_sound_id')) {
+  db.exec("ALTER TABLE users ADD COLUMN sleep_sound_id TEXT NOT NULL DEFAULT 'lullaby1'");
+}
+
 module.exports = db;

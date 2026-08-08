@@ -53,13 +53,23 @@ router.post('/wake', authRequired, (req, res) => {
 });
 
 // 수면 유도 노래 on/off: 한번 off로 바꾸면 다시 on으로 바꾸기 전까지 계속 off로 유지된다.
+// soundId를 함께 보내면 재생할 곡도 함께 바꾼다.
 router.patch('/sound', authRequired, (req, res) => {
-  const { enabled } = req.body || {};
-  db.prepare('UPDATE users SET sleep_sound_enabled = ? WHERE id = ?').run(
-    enabled ? 1 : 0,
-    req.user.id
-  );
-  res.json({ sleepSoundEnabled: !!enabled });
+  const { enabled, soundId } = req.body || {};
+  if (soundId) {
+    db.prepare('UPDATE users SET sleep_sound_enabled = ?, sleep_sound_id = ? WHERE id = ?').run(
+      enabled ? 1 : 0,
+      String(soundId),
+      req.user.id
+    );
+  } else {
+    db.prepare('UPDATE users SET sleep_sound_enabled = ? WHERE id = ?').run(
+      enabled ? 1 : 0,
+      req.user.id
+    );
+  }
+  const user = db.prepare('SELECT sleep_sound_enabled, sleep_sound_id FROM users WHERE id = ?').get(req.user.id);
+  res.json({ sleepSoundEnabled: !!user.sleep_sound_enabled, sleepSoundId: user.sleep_sound_id });
 });
 
 router.get('/records', authRequired, (req, res) => {
