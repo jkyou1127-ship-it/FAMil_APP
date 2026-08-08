@@ -12,7 +12,11 @@ void main() {
 
   setUp(() async {
     tempDir = Directory.systemTemp.createTempSync('famil_server_test_');
-    server = FamilServer.open(dbPath: '${tempDir.path}/test.db', jwtSecret: 'test_secret');
+    server = FamilServer.open(
+      dbPath: '${tempDir.path}/test.db',
+      jwtSecret: 'test_secret',
+      uploadsDir: '${tempDir.path}/uploads',
+    );
     await server.start(port: 0, address: '127.0.0.1');
     baseUrl = 'http://127.0.0.1:${server.port}';
   });

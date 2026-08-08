@@ -3,12 +3,14 @@ import 'dart:io';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
+import 'package:shelf_static/shelf_static.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 import 'db/schema.dart';
 import 'realtime/realtime_hub.dart';
 import 'realtime/ws_route.dart';
 import 'routes/auth_routes.dart';
+import 'routes/users_routes.dart';
 import 'utils/json_response.dart';
 import 'utils/kst_time.dart';
 
@@ -18,15 +20,17 @@ import 'utils/kst_time.dart';
 class FamilServer {
   final Database db;
   final String jwtSecret;
+  final String uploadsDir;
   final RealtimeHub realtime;
   HttpServer? _httpServer;
 
-  FamilServer._(this.db, this.jwtSecret, this.realtime);
+  FamilServer._(this.db, this.jwtSecret, this.uploadsDir, this.realtime);
 
-  static FamilServer open({required String dbPath, required String jwtSecret}) {
+  static FamilServer open({required String dbPath, required String jwtSecret, required String uploadsDir}) {
     ServerTime.init();
     final db = openFamilDatabase(dbPath);
-    return FamilServer._(db, jwtSecret, RealtimeHub(db));
+    Directory(uploadsDir).createSync(recursive: true);
+    return FamilServer._(db, jwtSecret, uploadsDir, RealtimeHub(db));
   }
 
   int? get port => _httpServer?.port;
@@ -36,6 +40,8 @@ class FamilServer {
 
     final router = Router();
     router.mount('/auth', buildAuthRouter(db, jwtSecret).call);
+    router.mount('/users', buildUsersRouter(db, jwtSecret, realtime, uploadsDir: uploadsDir).call);
+    router.mount('/uploads', createStaticHandler(uploadsDir));
     router.get('/health', (Request request) => jsonResponse({'ok': true, 'time': DateTime.now().toUtc().toIso8601String()}));
     router.get('/realtime', buildRealtimeHandler(db, jwtSecret, realtime));
 
