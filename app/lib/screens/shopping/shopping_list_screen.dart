@@ -18,6 +18,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   final _controller = TextEditingController();
   List<ShoppingItem> _items = [];
   bool _loading = true;
+  String? _error;
   late final SocketService _socket;
 
   @override
@@ -52,12 +53,25 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
       if (mounted) {
         setState(() {
           _items = list;
+          _error = null;
           _loading = false;
         });
       }
-    } on ApiException catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _loading = false;
+        });
+      }
     }
+  }
+
+  void _applyItemsResponse(Map<String, dynamic> res) {
+    final list = (res['items'] as List<dynamic>)
+        .map((e) => ShoppingItem.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList();
+    if (mounted) setState(() => _items = list);
   }
 
   Future<void> _add() async {
@@ -65,7 +79,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     if (text.isEmpty) return;
     _controller.clear();
     try {
-      await context.read<ApiClient>().post('/shopping', {'content': text});
+      // 소켓 브로드캐스트만 기다리면, 재연결 대기 중일 때 내가 한 조작이
+      // 내 화면에는 반영되지 않는 것처럼 보일 수 있어 응답을 바로 반영한다.
+      _applyItemsResponse(await context.read<ApiClient>().post('/shopping', {'content': text}));
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -73,7 +89,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
 
   Future<void> _toggle(ShoppingItem item) async {
     try {
-      await context.read<ApiClient>().patch('/shopping/${item.id}', {'bought': !item.bought});
+      _applyItemsResponse(await context.read<ApiClient>().patch('/shopping/${item.id}', {'bought': !item.bought}));
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -82,6 +98,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   Future<void> _delete(ShoppingItem item) async {
     try {
       await context.read<ApiClient>().delete('/shopping/${item.id}');
+      await _load();
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -90,6 +107,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   Future<void> _clearBought() async {
     try {
       await context.read<ApiClient>().delete('/shopping/bought');
+      await _load();
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -133,7 +151,16 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : RefreshIndicator(
                     onRefresh: _load,
-                    child: _items.isEmpty
+                    child: _error != null
+                        ? ListView(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(32),
+                                child: Text('서버에 연결할 수 없습니다: $_error\n아래로 당겨서 다시 시도해주세요.'),
+                              ),
+                            ],
+                          )
+                        : _items.isEmpty
                         ? ListView(children: const [Padding(padding: EdgeInsets.all(32), child: Text('장보기 목록이 비어 있습니다.'))])
                         : ListView.builder(
                             itemCount: _items.length,
