@@ -144,6 +144,18 @@ CREATE TABLE IF NOT EXISTS chat_room_messages (
   FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS shopping_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  content TEXT NOT NULL,
+  added_by INTEGER NOT NULL,
+  bought INTEGER NOT NULL DEFAULT 0,
+  bought_by INTEGER,
+  created_at TEXT NOT NULL,
+  bought_at TEXT,
+  FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (bought_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_messages_pair ON messages (sender_id, receiver_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_device_tokens_user ON device_tokens (user_id);
 CREATE INDEX IF NOT EXISTS idx_knocks_room ON knocks (room_id, status);
@@ -152,6 +164,7 @@ CREATE INDEX IF NOT EXISTS idx_schedules_user_date ON schedules (user_id, date);
 CREATE INDEX IF NOT EXISTS idx_alarms_user ON alarms (user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_room_members_user ON chat_room_members (user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_room_messages_room ON chat_room_messages (room_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_shopping_items_bought ON shopping_items (bought, created_at);
 ''');
 
   return db;

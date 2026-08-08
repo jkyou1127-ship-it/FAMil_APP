@@ -20,6 +20,7 @@ const sleepRoutes = require('./routes/sleep');
 const alarmRoutes = require('./routes/alarms');
 const scheduleRoutes = require('./routes/schedules');
 const todoRoutes = require('./routes/todos');
+const shoppingRoutes = require('./routes/shopping');
 
 const app = express();
 const server = http.createServer(app);
@@ -42,6 +43,7 @@ app.use('/sleep', sleepRoutes);
 app.use('/alarms', alarmRoutes);
 app.use('/schedules', scheduleRoutes);
 app.use('/todos', todoRoutes);
+app.use('/shopping', shoppingRoutes);
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 // eslint-disable-next-line no-unused-vars

@@ -76,12 +76,12 @@ class _FamilAppState extends State<FamilApp> {
           debugShowCheckedModeBanner: false,
           themeMode: themeController.mode,
           theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3D6BFF)),
+            colorScheme: ColorScheme.fromSeed(seedColor: themeController.seedColor),
             useMaterial3: true,
           ),
           darkTheme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF3D6BFF),
+              seedColor: themeController.seedColor,
               brightness: Brightness.dark,
             ),
             useMaterial3: true,

@@ -281,6 +281,21 @@ async function main() {
   r = await api('GET', '/todos', { token: guestToken });
   assert(r.json.todos.length === todosBeforeMerge + 1, '병합된 할일이 실제로 반영된다');
 
+  // ---- 장보기 목록 (온 가족이 함께 씀) ----
+  r = await api('POST', '/shopping', { token: guestToken, body: { content: '우유' } });
+  assert(r.status === 201 && r.json.items.some((i) => i.content === '우유'), '아무나 장보기 목록에 항목을 추가할 수 있다');
+  r = await api('GET', '/shopping', { token: ownerToken });
+  const shoppingItem = r.json.items.find((i) => i.content === '우유');
+  assert(shoppingItem && shoppingItem.bought === false, '다른 사용자도 장보기 목록을 볼 수 있다');
+
+  r = await api('PATCH', `/shopping/${shoppingItem.id}`, { token: ownerToken, body: { bought: true } });
+  assert(r.status === 200 && r.json.items.find((i) => i.id === shoppingItem.id).bought === true, '다른 사용자가 추가한 항목도 산 것으로 체크할 수 있다');
+
+  r = await api('DELETE', '/shopping/bought', { token: guestToken });
+  assert(r.status === 204, '산 항목을 한 번에 정리할 수 있다');
+  r = await api('GET', '/shopping', { token: guestToken });
+  assert(!r.json.items.some((i) => i.id === shoppingItem.id), '정리된 항목은 목록에서 사라진다');
+
   // ---- Sleep / wake ----
   r = await api('POST', '/sleep/start', { token: guestToken });
   assert(r.status === 201, '취침 기록이 생성된다');

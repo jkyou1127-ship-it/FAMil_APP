@@ -16,6 +16,7 @@ import 'routes/chat_rooms_routes.dart';
 import 'routes/messages_routes.dart';
 import 'routes/rooms_routes.dart';
 import 'routes/schedules_routes.dart';
+import 'routes/shopping_routes.dart';
 import 'routes/sleep_routes.dart';
 import 'routes/status_routes.dart';
 import 'routes/suggestions_routes.dart';
@@ -61,6 +62,7 @@ class FamilServer {
     router.mount('/alarms', buildAlarmsRouter(db, jwtSecret).call);
     router.mount('/schedules', buildSchedulesRouter(db, jwtSecret).call);
     router.mount('/todos', buildTodosRouter(db, jwtSecret).call);
+    router.mount('/shopping', buildShoppingRouter(db, jwtSecret, realtime).call);
     router.mount('/uploads', createStaticHandler(uploadsDir));
     router.get('/health', (Request request) => jsonResponse({'ok': true, 'time': DateTime.now().toUtc().toIso8601String()}));
     router.get('/realtime', buildRealtimeHandler(db, jwtSecret, realtime));

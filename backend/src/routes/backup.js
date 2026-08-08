@@ -69,6 +69,11 @@ const MERGE_TABLES = {
     sql: 'INSERT INTO suggestions (content, created_at) VALUES (?, ?)',
     values: (r) => [r.content, r.createdAt],
   },
+  shoppingItems: {
+    required: ['content', 'addedBy', 'createdAt'],
+    sql: 'INSERT INTO shopping_items (content, added_by, bought, bought_by, created_at, bought_at) VALUES (?, ?, ?, ?, ?, ?)',
+    values: (r) => [r.content, r.addedBy, r.bought ? 1 : 0, r.boughtBy || null, r.createdAt, r.boughtAt || null],
+  },
 };
 
 // 백업 서버(폰)에서 만들어진, 출입 전부터 있던 사용자/방/단톡방에 대한 새 데이터를

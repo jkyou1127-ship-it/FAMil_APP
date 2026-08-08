@@ -157,6 +157,7 @@ class _BackupServerScreenState extends State<BackupServerScreen> {
         'todos' => '할 일',
         'schedules' => '일정',
         'suggestions' => '건의사항',
+        'shoppingItems' => '장보기 항목',
         _ => key,
       };
 
@@ -197,7 +198,7 @@ class _BackupServerScreenState extends State<BackupServerScreen> {
                     '사용 순서: ① PC 서버가 켜져 있을 때 "지금 스냅샷 저장"으로 최신 데이터를 미리 받아둡니다. '
                     '② PC가 꺼지면 "백업 서버로 시작"을 누릅니다. 가족들은 로그인 화면의 "같은 Wi-Fi에서 자동 감지"로 '
                     '이 기기를 찾아 기존 계정으로 다시 로그인하면 됩니다. '
-                    '③ PC가 다시 켜지면 "주 서버로 복귀"를 눌러 그동안 쌓인 메시지/할 일/일정/건의사항을 PC로 보낸 뒤 중지합니다.\n\n'
+                    '③ PC가 다시 켜지면 "주 서버로 복귀"를 눌러 그동안 쌓인 메시지/할 일/일정/건의사항/장보기 목록을 PC로 보낸 뒤 중지합니다.\n\n'
                     '주의: 백업 중에 새로 만든 계정이나 방/단톡방은 복귀 시 함께 옮겨지지 않습니다.',
                     style: TextStyle(fontSize: 13),
                   ),
