@@ -59,6 +59,92 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _changePassword() async {
+    final currentController = TextEditingController();
+    final newController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('비밀번호 변경'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: currentController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: '현재 비밀번호', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: newController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: '새 비밀번호 (4자 이상)', border: OutlineInputBorder()),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('취소')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('변경')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await context.read<ApiClient>().patch('/users/me/password', {
+        'currentPassword': currentController.text,
+        'newPassword': newController.text,
+      });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('비밀번호가 변경되었습니다.')));
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  Future<void> _changeUsername() async {
+    final me = context.read<AuthProvider>().currentUser;
+    final usernameController = TextEditingController(text: me?.username ?? '');
+    final passwordController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('아이디 변경'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: usernameController,
+              decoration: const InputDecoration(labelText: '새 아이디', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: '비밀번호 확인', border: OutlineInputBorder()),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('취소')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('변경')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final res = await context.read<ApiClient>().patch('/users/me/username', {
+        'newUsername': usernameController.text.trim(),
+        'password': passwordController.text,
+      });
+      final user = AppUser.fromJson(Map<String, dynamic>.from(res['user'] as Map));
+      if (mounted) context.read<AuthProvider>().applyUserUpdate(user);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('아이디가 변경되었습니다.')));
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   Future<void> _confirmWithdraw() async {
     final passwordController = TextEditingController();
     final confirmed = await showDialog<bool>(
@@ -143,7 +229,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Text('저장'),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _changeUsername,
+            icon: const Icon(Icons.badge_outlined),
+            label: Text('아이디 변경 (현재: ${me?.username ?? ''})'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _changePassword,
+            icon: const Icon(Icons.lock_outline),
+            label: const Text('비밀번호 변경'),
+          ),
+          const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 8),
           OutlinedButton.icon(

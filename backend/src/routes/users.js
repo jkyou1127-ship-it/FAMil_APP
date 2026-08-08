@@ -60,6 +60,43 @@ router.post('/me/photo', authRequired, (req, res) => {
   });
 });
 
+// 비밀번호 변경: 현재 비밀번호 확인 후 새 비밀번호로 교체한다.
+router.patch('/me/password', authRequired, (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: '현재 비밀번호와 새 비밀번호를 모두 입력해주세요.' });
+  }
+  if (!bcrypt.compareSync(String(currentPassword), req.user.password_hash)) {
+    return res.status(401).json({ error: '현재 비밀번호가 일치하지 않습니다.' });
+  }
+  if (String(newPassword).length < 4) {
+    return res.status(400).json({ error: '새 비밀번호는 4자 이상이어야 합니다.' });
+  }
+
+  const passwordHash = bcrypt.hashSync(String(newPassword), 10);
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, req.user.id);
+  res.status(204).end();
+});
+
+// 아이디(로그인용 username) 변경: 비밀번호 확인 후 중복되지 않은 새 아이디로 교체한다.
+router.patch('/me/username', authRequired, (req, res) => {
+  const { password, newUsername } = req.body || {};
+  const trimmed = newUsername && String(newUsername).trim();
+  if (!password || !trimmed) {
+    return res.status(400).json({ error: '비밀번호와 새 아이디를 입력해주세요.' });
+  }
+  if (!bcrypt.compareSync(String(password), req.user.password_hash)) {
+    return res.status(401).json({ error: '비밀번호가 일치하지 않습니다.' });
+  }
+
+  const existing = db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(trimmed, req.user.id);
+  if (existing) return res.status(409).json({ error: '이미 사용 중인 아이디입니다.' });
+
+  db.prepare('UPDATE users SET username = ? WHERE id = ?').run(trimmed, req.user.id);
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+  res.json({ user: publicUser(user) });
+});
+
 // 모바일 푸시 알림(FCM)을 받기 위한 기기 토큰을 등록/갱신한다.
 router.post('/me/device-token', authRequired, (req, res) => {
   const { token, platform } = req.body || {};

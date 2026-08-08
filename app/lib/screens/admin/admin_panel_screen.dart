@@ -70,6 +70,29 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     }
   }
 
+  Future<void> _renameRoom(Room room) async {
+    final api = context.read<ApiClient>();
+    final controller = TextEditingController(text: room.name);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('방 이름 변경'),
+        content: TextField(controller: controller, autofocus: true, decoration: const InputDecoration(hintText: '방 이름')),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('취소')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(controller.text), child: const Text('변경')),
+        ],
+      ),
+    );
+    if (name == null || name.trim().isEmpty || name.trim() == room.name) return;
+    try {
+      await api.patch('/rooms/${room.id}/name', {'name': name.trim()});
+      _load();
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   Future<void> _assignOwner(Room room) async {
     final api = context.read<ApiClient>();
     final selected = await showModalBottomSheet<AppUser>(
@@ -120,7 +143,18 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   if (_rooms.isEmpty) const Padding(padding: EdgeInsets.all(16), child: Text('아직 만들어진 방이 없습니다.')),
                   ..._rooms.map((room) => ListTile(
                         leading: const Icon(Icons.meeting_room_outlined),
-                        title: Text(room.name),
+                        title: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(child: Text(room.name)),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 18),
+                              tooltip: '방 이름 변경',
+                              onPressed: () => _renameRoom(room),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ],
+                        ),
                         subtitle: Text('소유자: ${_ownerName(room.ownerId)} · ${room.accessStatus == 'open' ? '출입 가능' : '출입 불가'}'),
                         trailing: TextButton(
                           onPressed: () => _assignOwner(room),

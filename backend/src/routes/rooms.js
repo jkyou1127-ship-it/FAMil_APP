@@ -28,6 +28,22 @@ router.post('/', authRequired, adminRequired, (req, res) => {
   res.status(201).json({ room: publicRoom(room) });
 });
 
+// 관리자가 방 이름을 변경한다.
+router.patch('/:id/name', authRequired, adminRequired, (req, res) => {
+  const room = db.prepare('SELECT * FROM rooms WHERE id = ?').get(req.params.id);
+  if (!room) return res.status(404).json({ error: '방을 찾을 수 없습니다.' });
+
+  const { name } = req.body || {};
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ error: '방 이름을 입력해주세요.' });
+  }
+
+  db.prepare('UPDATE rooms SET name = ? WHERE id = ?').run(String(name).trim(), room.id);
+  const updatedRoom = db.prepare('SELECT * FROM rooms WHERE id = ?').get(room.id);
+  broadcastRooms();
+  res.json({ room: publicRoom(updatedRoom) });
+});
+
 // 관리자가 해당 방의 소유자(실제로 그 방에서 생활하는 사람)를 배정한다.
 router.post('/:id/assign-owner', authRequired, adminRequired, (req, res) => {
   const room = db.prepare('SELECT * FROM rooms WHERE id = ?').get(req.params.id);

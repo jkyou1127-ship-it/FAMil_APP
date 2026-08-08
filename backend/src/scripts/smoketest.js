@@ -93,6 +93,11 @@ async function main() {
   r = await api('POST', `/rooms/${roomId}/assign-owner`, { token: adminToken, body: { userId: ownerId } });
   assert(r.status === 200 && r.json.room.ownerId === ownerId, '관리자가 소유자를 배정한다');
 
+  r = await api('PATCH', `/rooms/${roomId}/name`, { token: ownerToken, body: { name: '해킹시도' } });
+  assert(r.status === 403, '관리자가 아니면 방 이름을 바꿀 수 없다');
+  r = await api('PATCH', `/rooms/${roomId}/name`, { token: adminToken, body: { name: '철수의방' } });
+  assert(r.status === 200 && r.json.room.name === '철수의방', '관리자가 방 이름을 변경한다');
+
   // ---- Sockets: presence + knock + messenger ----
   const ownerSocket = await connectSocket(ownerToken);
   const guestSocket = await connectSocket(guestToken);
@@ -146,6 +151,37 @@ async function main() {
   assert(r.status === 204, '본인 계정은 비밀번호 확인 후 탈퇴할 수 있다');
   r = await api('POST', '/auth/login', { body: { username: 'temp1', password: 'pass1234' } });
   assert(r.status === 401, '탈퇴한 계정으로는 로그인할 수 없다');
+
+  // ---- Password & username change ----
+  r = await api('POST', '/auth/register', {
+    body: { username: 'temp2', password: 'pass1234', displayName: '임시2' },
+  });
+  const temp2Token = r.json.token;
+  r = await api('PATCH', '/users/me/password', {
+    token: temp2Token,
+    body: { currentPassword: 'wrongpass', newPassword: 'newpass1' },
+  });
+  assert(r.status === 401, '현재 비밀번호가 틀리면 비밀번호 변경이 거부된다');
+  r = await api('PATCH', '/users/me/password', {
+    token: temp2Token,
+    body: { currentPassword: 'pass1234', newPassword: 'newpass1' },
+  });
+  assert(r.status === 204, '현재 비밀번호 확인 후 비밀번호를 변경할 수 있다');
+  r = await api('POST', '/auth/login', { body: { username: 'temp2', password: 'newpass1' } });
+  assert(r.status === 200, '변경된 비밀번호로 로그인할 수 있다');
+
+  r = await api('PATCH', '/users/me/username', {
+    token: temp2Token,
+    body: { newUsername: 'owner1', password: 'newpass1' },
+  });
+  assert(r.status === 409, '이미 사용 중인 아이디로는 변경할 수 없다');
+  r = await api('PATCH', '/users/me/username', {
+    token: temp2Token,
+    body: { newUsername: 'temp2renamed', password: 'newpass1' },
+  });
+  assert(r.status === 200 && r.json.user.username === 'temp2renamed', '아이디를 변경할 수 있다');
+  r = await api('POST', '/auth/login', { body: { username: 'temp2renamed', password: 'newpass1' } });
+  assert(r.status === 200, '변경된 아이디로 로그인할 수 있다');
 
   // ---- Suggestions (anonymous, visible to all) ----
   r = await api('POST', '/suggestions', { token: guestToken, body: { content: '건조기 사주세요' } });
