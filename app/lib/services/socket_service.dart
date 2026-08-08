@@ -12,7 +12,10 @@ class SocketService {
     _socket = io.io(
       baseUrl,
       io.OptionBuilder()
-          .setTransports(['websocket'])
+          // websocket을 우선 시도하되, 방화벽/프록시 등으로 업그레이드가 막히는
+          // 환경(예: PC를 서버로 쓸 때 LAN 너머 연결)에서도 polling으로 폴백해
+          // 연결이 끊기지 않도록 한다.
+          .setTransports(['websocket', 'polling'])
           .setAuth({'token': token})
           .disableAutoConnect()
           .build(),

@@ -16,7 +16,7 @@ class ChatListScreen extends StatefulWidget {
   State<ChatListScreen> createState() => _ChatListScreenState();
 }
 
-class _ChatListScreenState extends State<ChatListScreen> {
+class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObserver {
   List<Conversation> _conversations = [];
   bool _loading = true;
   late final SocketService _socket;
@@ -26,13 +26,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
     super.initState();
     _socket = context.read<SocketService>();
     _socket.on('message:new', _onMessage);
+    WidgetsBinding.instance.addObserver(this);
     _load();
   }
 
   @override
   void dispose() {
     _socket.off('message:new', _onMessage);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _load();
   }
 
   void _onMessage(dynamic _) => _load();

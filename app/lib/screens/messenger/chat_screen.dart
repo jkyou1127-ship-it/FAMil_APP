@@ -16,7 +16,7 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   List<ChatMessage> _messages = [];
@@ -30,15 +30,24 @@ class _ChatScreenState extends State<ChatScreen> {
     _meId = context.read<AuthProvider>().currentUser!.id;
     _socket = context.read<SocketService>();
     _socket.on('message:new', _onMessage);
+    WidgetsBinding.instance.addObserver(this);
     _load();
   }
 
   @override
   void dispose() {
     _socket.off('message:new', _onMessage);
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 백그라운드에 있는 동안 소켓이 끊겼다가 늦게 재연결되는 경우를 대비해,
+    // 앱으로 돌아올 때마다 대화 내용을 새로 불러온다.
+    if (state == AppLifecycleState.resumed) _load();
   }
 
   void _onMessage(dynamic data) {
