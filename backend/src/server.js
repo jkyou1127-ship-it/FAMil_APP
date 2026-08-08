@@ -7,6 +7,7 @@ const { Server } = require('socket.io');
 
 const { initSockets } = require('./sockets');
 const { startCronJobs } = require('./cron');
+const { startDiscoveryResponder } = require('./discovery');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -55,6 +56,7 @@ startCronJobs();
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
   console.log(`FAMil APP backend listening on port ${PORT}`);
+  startDiscoveryResponder(PORT);
 });
 
 module.exports = { app, server, io };
