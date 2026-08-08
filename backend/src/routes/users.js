@@ -1,5 +1,7 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
+const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const db = require('../db');
 const { publicUser } = require('../utils/serialize');
@@ -55,6 +57,31 @@ router.post('/me/photo', authRequired, (req, res) => {
     broadcastStatus();
     res.json({ user: publicUser(user) });
   });
+});
+
+// 회원 탈퇴: 비밀번호 재확인 후 계정과 관련 데이터를 모두 삭제한다.
+// 관리자 계정은 시스템에 단 1명만 존재해야 하므로 탈퇴할 수 없다.
+router.delete('/me', authRequired, (req, res) => {
+  if (req.user.is_admin) {
+    return res.status(403).json({
+      error: '관리자 계정은 탈퇴할 수 없습니다. 다른 사용자에게 관리자 권한을 넘기는 기능은 아직 지원되지 않습니다.',
+    });
+  }
+
+  const { password } = req.body || {};
+  if (!password || !bcrypt.compareSync(String(password), req.user.password_hash)) {
+    return res.status(401).json({ error: '비밀번호가 일치하지 않습니다.' });
+  }
+
+  if (req.user.profile_photo) {
+    const filePath = path.join(__dirname, '..', '..', req.user.profile_photo.replace(/^\/+/, ''));
+    fs.unlink(filePath, () => {});
+  }
+
+  db.prepare('DELETE FROM users WHERE id = ?').run(req.user.id);
+
+  broadcastStatus();
+  res.status(204).end();
 });
 
 module.exports = router;

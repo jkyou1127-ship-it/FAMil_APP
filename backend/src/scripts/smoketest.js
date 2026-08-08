@@ -133,6 +133,20 @@ async function main() {
   r = await api('GET', `/messages/${guestId}`, { token: ownerToken });
   assert(r.json.messages.some((m) => m.content === '안녕하세요!'), 'REST로 대화 내역을 조회할 수 있다');
 
+  // ---- Account deletion ----
+  r = await api('DELETE', '/users/me', { token: adminToken, body: { password: 'pass1234' } });
+  assert(r.status === 403, '관리자 계정은 탈퇴할 수 없다');
+  r = await api('DELETE', '/users/me', { token: guestToken, body: { password: 'wrongpass' } });
+  assert(r.status === 401, '비밀번호가 틀리면 탈퇴가 거부된다');
+  r = await api('POST', '/auth/register', {
+    body: { username: 'temp1', password: 'pass1234', displayName: '임시' },
+  });
+  const tempToken = r.json.token;
+  r = await api('DELETE', '/users/me', { token: tempToken, body: { password: 'pass1234' } });
+  assert(r.status === 204, '본인 계정은 비밀번호 확인 후 탈퇴할 수 있다');
+  r = await api('POST', '/auth/login', { body: { username: 'temp1', password: 'pass1234' } });
+  assert(r.status === 401, '탈퇴한 계정으로는 로그인할 수 없다');
+
   // ---- Suggestions (anonymous, visible to all) ----
   r = await api('POST', '/suggestions', { token: guestToken, body: { content: '건조기 사주세요' } });
   assert(r.status === 201 && r.json.suggestion.authorId === undefined, '건의사항은 작성자 정보 없이 저장된다');

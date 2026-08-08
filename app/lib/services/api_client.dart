@@ -44,7 +44,8 @@ class ApiClient {
   Future<Map<String, dynamic>> patch(String path, [dynamic data]) =>
       _wrap(() => dio.patch(path, data: data));
 
-  Future<void> delete(String path) => _wrap(() => dio.delete(path)).then((_) {});
+  Future<void> delete(String path, [dynamic data]) =>
+      _wrap(() => dio.delete(path, data: data)).then((_) {});
 
   Future<Map<String, dynamic>> uploadPhoto(String path, List<int> bytes, String filename) {
     final form = FormData.fromMap({
