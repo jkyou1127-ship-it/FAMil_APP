@@ -5,6 +5,7 @@ import '../../services/auth_provider.dart';
 import '../../services/theme_controller.dart';
 import '../../widgets/user_avatar.dart';
 import '../admin/admin_panel_screen.dart';
+import '../admin/backup_server_screen.dart';
 import '../auth/server_settings_dialog.dart';
 import '../profile/profile_screen.dart';
 import '../sleep/sleep_screen.dart';
@@ -74,6 +75,12 @@ class MoreScreen extends StatelessWidget {
             leading: const Icon(Icons.bedtime_outlined),
             title: const Text('취침 / 기상'),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SleepScreen())),
+          ),
+          ListTile(
+            leading: const Icon(Icons.backup_outlined),
+            title: const Text('백업 서버 (임시)'),
+            subtitle: const Text('PC 서버가 꺼졌을 때 이 기기를 임시 서버로 켜기'),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BackupServerScreen())),
           ),
           if (me?.isAdmin == true) ...[
             const Divider(),

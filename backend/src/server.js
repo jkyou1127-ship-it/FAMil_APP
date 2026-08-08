@@ -9,7 +9,7 @@ const { startCronJobs } = require('./cron');
 const { startDiscoveryResponder } = require('./discovery');
 
 const authRoutes = require('./routes/auth');
-const adminRoutes = require('./routes/admin');
+const backupRoutes = require('./routes/backup');
 const userRoutes = require('./routes/users');
 const roomRoutes = require('./routes/rooms');
 const messageRoutes = require('./routes/messages');
@@ -31,7 +31,7 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 app.get('/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
 app.use('/auth', authRoutes);
-app.use('/admin', adminRoutes);
+app.use('/backup', backupRoutes);
 app.use('/users', userRoutes);
 app.use('/rooms', roomRoutes);
 app.use('/messages', messageRoutes);

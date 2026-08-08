@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../../models/room.dart';
 import '../../models/user.dart';
 import '../../services/api_client.dart';
-import 'backup_server_screen.dart';
 
 /// 관리자 패널: 방을 만들고, 각 방의 소유자(실제로 그 방에서 생활하는 사람)를 배정한다.
 class AdminPanelScreen extends StatefulWidget {
@@ -129,16 +128,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('관리자 패널'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.backup_outlined),
-            tooltip: '백업 서버 (임시)',
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BackupServerScreen())),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('관리자 패널')),
       floatingActionButton: FloatingActionButton(onPressed: _createRoom, child: const Icon(Icons.add_home_outlined)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

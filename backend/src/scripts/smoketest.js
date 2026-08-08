@@ -258,28 +258,26 @@ async function main() {
   r = await api('GET', '/chat-rooms', { token: guestToken });
   assert(!r.json.rooms.some((rm) => rm.id === chatRoomId), '나간 단톡방은 더 이상 목록에 보이지 않는다');
 
-  // ---- Admin: backup snapshot + merge-import (폰 백업 서버 기능용) ----
-  r = await api('GET', '/admin/backup-meta', { token: guestToken });
-  assert(r.status === 403, '관리자가 아니면 백업 메타데이터를 볼 수 없다');
-  r = await api('GET', '/admin/backup-meta', { token: adminToken });
-  assert(r.status === 200 && typeof r.json.maxUserId === 'number', '관리자는 백업 기준값을 조회할 수 있다');
+  // ---- Backup: 스냅샷 + merge-import (관리자가 아니어도 누구나 폰을 백업 서버로 쓸 수 있어야 한다) ----
+  r = await api('GET', '/backup/meta', { token: guestToken });
+  assert(r.status === 200 && typeof r.json.maxUserId === 'number', '관리자가 아니어도 백업 기준값을 조회할 수 있다');
 
-  const snapshotRes = await fetch(`${BASE}/admin/backup-snapshot`, {
-    headers: { Authorization: `Bearer ${adminToken}` },
+  const snapshotRes = await fetch(`${BASE}/backup/snapshot`, {
+    headers: { Authorization: `Bearer ${guestToken}` },
   });
   const snapshotBytes = await snapshotRes.arrayBuffer();
-  assert(snapshotRes.status === 200 && snapshotBytes.byteLength > 0, '백업 스냅샷 파일을 내려받을 수 있다');
+  assert(snapshotRes.status === 200 && snapshotBytes.byteLength > 0, '관리자가 아니어도 백업 스냅샷 파일을 내려받을 수 있다');
 
   r = await api('GET', '/todos', { token: guestToken });
   const todosBeforeMerge = r.json.todos.length;
-  r = await api('POST', '/admin/merge-import', {
-    token: adminToken,
+  r = await api('POST', '/backup/merge-import', {
+    token: guestToken,
     body: {
       todos: [{ userId: guestId, content: '병합된 할일', completed: false, createdAt: new Date().toISOString() }],
       suggestions: [{ content: '병합된 건의사항', createdAt: new Date().toISOString() }],
     },
   });
-  assert(r.status === 200 && r.json.imported.todos === 1 && r.json.imported.suggestions === 1, '백업 서버의 새 데이터를 주 서버로 병합할 수 있다');
+  assert(r.status === 200 && r.json.imported.todos === 1 && r.json.imported.suggestions === 1, '관리자가 아니어도 백업 서버의 새 데이터를 주 서버로 병합할 수 있다');
   r = await api('GET', '/todos', { token: guestToken });
   assert(r.json.todos.length === todosBeforeMerge + 1, '병합된 할일이 실제로 반영된다');
 

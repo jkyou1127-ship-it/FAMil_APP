@@ -6,7 +6,7 @@ import '../models/backup_snapshot.dart';
 /// 방/단톡방을 참조하는 것만 골라 주 서버로 병합 전송할 형태로 내보낸다.
 /// 백업 중 새로 생긴 사용자/방/단톡방을 참조하는 데이터는 주 서버에 대응하는
 /// 대상이 없을 수 있어 제외한다 — backend/src/routes/admin.js의
-/// POST /admin/merge-import가 기대하는 형식과 맞춰야 한다.
+/// POST /backup/merge-import가 기대하는 형식과 맞춰야 한다.
 Map<String, dynamic> exportNewRowsForMerge(Database db, SnapshotMeta meta) {
   final cutoff = meta.takenAt.toIso8601String();
 

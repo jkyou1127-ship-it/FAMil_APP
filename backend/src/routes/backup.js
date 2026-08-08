@@ -3,16 +3,19 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const db = require('../db');
-const { authRequired, adminRequired } = require('../middleware/auth');
+const { authRequired } = require('../middleware/auth');
 
 const router = express.Router();
-router.use(authRequired, adminRequired);
+// 관리자만이 아니라, 로그인한 가족 구성원 누구나 PC가 꺼졌을 때 자기 폰을
+// 임시 백업 서버로 켤 수 있어야 한다 — 꼭 관리자가 그 자리에 있으리라는
+// 보장이 없기 때문이다.
+router.use(authRequired);
 
 // PC가 꺼졌을 때 폰이 "임시 백업 서버" 역할을 할 수 있도록, 현재 DB의 스냅샷을
 // 내려받기 전에 병합 시점 계산에 필요한 기준값(각 테이블의 현재 최대 id, 시각)을
 // 알려준다. 백업 중 새로 생긴 행(새 사용자/새 방/새 단톡방)은 기준 이후 id를 갖게
 // 되므로, 나중에 병합할 때 "출입 전부터 있던 대상"인지 걸러내는 데 쓰인다.
-router.get('/backup-meta', (req, res) => {
+router.get('/meta', (req, res) => {
   const maxId = (table) => db.prepare(`SELECT COALESCE(MAX(id), 0) AS max FROM ${table}`).get().max;
   res.json({
     takenAt: new Date().toISOString(),
@@ -24,7 +27,7 @@ router.get('/backup-meta', (req, res) => {
 
 // 현재 DB의 일관된 스냅샷 파일을 스트리밍한다 (better-sqlite3의 backup API 사용 —
 // 다른 요청이 동시에 쓰기 중이어도 안전한 복사본을 만든다).
-router.get('/backup-snapshot', async (req, res) => {
+router.get('/snapshot', async (req, res) => {
   const tempPath = path.join(os.tmpdir(), `famil-backup-${Date.now()}.db`);
   try {
     await db.backup(tempPath);

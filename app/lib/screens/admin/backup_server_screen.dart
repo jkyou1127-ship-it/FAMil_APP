@@ -9,7 +9,8 @@ import '../../services/auth_provider.dart';
 import '../../services/local_server_controller.dart';
 
 /// PC 서버가 꺼졌을 때 이 기기를 같은 Wi-Fi 안에서만 쓰는 임시 백업 서버로
-/// 켤 수 있게 해주는 관리자 화면. 자동으로 전환되지 않고, 관리자가 상황을
+/// 켤 수 있게 해주는 화면. 관리자가 그 자리에 없을 수도 있으니 로그인한
+/// 가족 구성원 누구나 쓸 수 있다. 자동으로 전환되지 않고, 사용자가 상황을
 /// 직접 확인하고 버튼을 눌러야 동작한다.
 class BackupServerScreen extends StatefulWidget {
   const BackupServerScreen({super.key});

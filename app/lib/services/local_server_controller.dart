@@ -23,7 +23,7 @@ enum LocalServerStatus { stopped, starting, running }
 /// 서버로 켤 수 있게 해준다. 인터넷 전체에 노출되는 것이 아니라 어디까지나
 /// 집 안에서의 임시 대체 용도다.
 ///
-/// 자동으로 주 서버 자리를 "빼앗는" 방식(자동 장애조치)이 아니라, 관리자가
+/// 자동으로 주 서버 자리를 "빼앗는" 방식(자동 장애조치)이 아니라, 사용자가
 /// 직접 시작/복귀 버튼을 눌러야 동작한다 — 여러 기기가 동시에 백업 서버로
 /// 켜져 서로 다른 데이터를 만드는 상황(split-brain)을 피하기 위한 선택이다.
 class LocalServerController extends ChangeNotifier {
@@ -84,9 +84,9 @@ class LocalServerController extends ChangeNotifier {
   /// 주 서버(현재 연결되어 있는 서버)에서 DB 스냅샷을 받아 로컬에 저장한다.
   /// [primaryApi]는 아직 주 서버를 가리키고 있는 상태의 ApiClient여야 한다.
   Future<void> downloadSnapshot(ApiClient primaryApi) async {
-    final metaJson = await primaryApi.get('/admin/backup-meta');
+    final metaJson = await primaryApi.get('/backup/meta');
     final response = await primaryApi.dio.get<List<int>>(
-      '/admin/backup-snapshot',
+      '/backup/snapshot',
       options: Options(responseType: ResponseType.bytes),
     );
     final bytes = response.data;
@@ -192,7 +192,7 @@ class LocalServerController extends ChangeNotifier {
     if (_primaryToken != null) {
       dio.options.headers['Authorization'] = 'Bearer $_primaryToken';
     }
-    final res = await dio.post('/admin/merge-import', data: rows);
+    final res = await dio.post('/backup/merge-import', data: rows);
     return MergeResult.fromJson(Map<String, dynamic>.from(res.data as Map));
   }
 }
