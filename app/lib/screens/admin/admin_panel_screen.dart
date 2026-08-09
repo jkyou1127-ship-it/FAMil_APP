@@ -119,6 +119,37 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     }
   }
 
+  Future<void> _resetPassword(AppUser user) async {
+    final api = context.read<ApiClient>();
+    final controller = TextEditingController();
+    final newPassword = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${user.displayName}님 비밀번호 초기화'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          obscureText: true,
+          decoration: const InputDecoration(hintText: '새 비밀번호 (4자 이상)'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('취소')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(controller.text), child: const Text('초기화')),
+        ],
+      ),
+    );
+    if (newPassword == null || newPassword.isEmpty) return;
+    try {
+      await api.patch('/users/${user.id}/reset-password', {'newPassword': newPassword});
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('${user.displayName}님의 비밀번호를 새로 설정했습니다.')));
+      }
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   String _ownerName(int? ownerId) {
     if (ownerId == null) return '미배정';
     final match = _users.where((u) => u.id == ownerId);
@@ -170,6 +201,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                         leading: Icon(u.isAdmin ? Icons.shield : Icons.person_outline),
                         title: Text(u.displayName),
                         subtitle: Text(u.isAdmin ? '관리자' : (u.roomId != null ? '방 배정됨' : '방 미배정')),
+                        trailing: TextButton(
+                          onPressed: () => _resetPassword(u),
+                          child: const Text('비밀번호 초기화'),
+                        ),
                       )),
                 ],
               ),

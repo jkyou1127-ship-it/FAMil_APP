@@ -198,6 +198,25 @@ async function main() {
   r = await api('POST', '/auth/login', { body: { username: 'temp2', password: 'newpass1' } });
   assert(r.status === 200, '변경된 비밀번호로 로그인할 수 있다');
 
+  // ---- 비밀번호를 잊어버렸을 때: 관리자가 초기화 ----
+  r = await api('PATCH', `/users/${ownerId}/reset-password`, {
+    token: guestToken,
+    body: { newPassword: 'shouldnotwork' },
+  });
+  assert(r.status === 403, '관리자가 아니면 다른 사람의 비밀번호를 초기화할 수 없다');
+  r = await api('PATCH', `/users/${ownerId}/reset-password`, {
+    token: adminToken,
+    body: { newPassword: 'ab' },
+  });
+  assert(r.status === 400, '초기화할 새 비밀번호도 4자 이상이어야 한다');
+  r = await api('PATCH', `/users/${ownerId}/reset-password`, {
+    token: adminToken,
+    body: { newPassword: 'resetpass1' },
+  });
+  assert(r.status === 204, '관리자는 비밀번호를 잊은 사용자의 비밀번호를 초기화할 수 있다');
+  r = await api('POST', '/auth/login', { body: { username: 'owner1', password: 'resetpass1' } });
+  assert(r.status === 200, '초기화된 비밀번호로 로그인할 수 있다');
+
   r = await api('PATCH', '/users/me/username', {
     token: temp2Token,
     body: { newUsername: 'owner1', password: 'newpass1' },

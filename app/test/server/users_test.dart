@@ -94,6 +94,29 @@ void main() {
     expect(res['body']['user']['username'], 'u5renamed');
   });
 
+  test('관리자는 비밀번호를 잊은 사용자의 비밀번호를 초기화할 수 있다', () async {
+    final adminToken = await registerAndGetToken('reset_admin'); // 첫 계정 = 관리자
+    final targetRes = await req('POST', '/auth/register', body: {
+      'username': 'reset_target',
+      'password': 'pass1234',
+      'displayName': 'target',
+    });
+    final targetId = targetRes['body']['user']['id'];
+    final targetToken = targetRes['body']['token'] as String;
+
+    var res = await req('PATCH', '/users/$targetId/reset-password', token: targetToken, body: {'newPassword': 'x'});
+    expect(res['status'], 403); // 본인이어도 관리자가 아니면 안 된다
+
+    res = await req('PATCH', '/users/$targetId/reset-password', token: adminToken, body: {'newPassword': 'ab'});
+    expect(res['status'], 400); // 4자 미만
+
+    res = await req('PATCH', '/users/$targetId/reset-password', token: adminToken, body: {'newPassword': 'resetpass1'});
+    expect(res['status'], 204);
+
+    res = await req('POST', '/auth/login', body: {'username': 'reset_target', 'password': 'resetpass1'});
+    expect(res['status'], 200);
+  });
+
   test('기기 토큰을 등록할 수 있다', () async {
     final token = await registerAndGetToken('u6');
     final res = await req('POST', '/users/me/device-token', token: token, body: {'token': 'abc123', 'platform': 'android'});

@@ -78,6 +78,23 @@ router.patch('/me/password', authRequired, (req, res) => {
   res.status(204).end();
 });
 
+// 비밀번호를 잊어버린 사용자를 위해, 관리자가 본인/타인 확인 없이 바로
+// 새 비밀번호로 초기화한다. (관리자 본인이 잠겼을 때는 이 API도 쓸 수
+// 없으므로 backend/src/scripts/reset-password.js를 대신 사용한다.)
+router.patch('/:id/reset-password', authRequired, adminRequired, (req, res) => {
+  const target = db.prepare('SELECT id FROM users WHERE id = ?').get(req.params.id);
+  if (!target) return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+
+  const { newPassword } = req.body || {};
+  if (!newPassword || String(newPassword).length < 4) {
+    return res.status(400).json({ error: '새 비밀번호는 4자 이상이어야 합니다.' });
+  }
+
+  const passwordHash = bcrypt.hashSync(String(newPassword), 10);
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, target.id);
+  res.status(204).end();
+});
+
 // 아이디(로그인용 username) 변경: 비밀번호 확인 후 중복되지 않은 새 아이디로 교체한다.
 router.patch('/me/username', authRequired, (req, res) => {
   const { password, newUsername } = req.body || {};

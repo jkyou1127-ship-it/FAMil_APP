@@ -81,6 +81,26 @@ Router buildUsersRouter(Database db, String jwtSecret, RealtimeHub hub, {require
     return Response(204);
   }));
 
+  // 비밀번호를 잊어버린 사용자를 위해, 관리자가 확인 없이 바로 새 비밀번호로 초기화한다.
+  router.patch('/<id>/reset-password', withAuth(db, jwtSecret, (request, user) async {
+    final adminError = requireAdmin(user);
+    if (adminError != null) return adminError;
+
+    final id = request.params['id'];
+    if (db.select('SELECT id FROM users WHERE id = ?', [id]).isEmpty) {
+      return jsonError('사용자를 찾을 수 없습니다.', status: 404);
+    }
+
+    final body = await readJsonBody(request);
+    final newPassword = body['newPassword']?.toString();
+    if (newPassword == null || newPassword.length < 4) {
+      return jsonError('새 비밀번호는 4자 이상이어야 합니다.');
+    }
+    final hash = BCrypt.hashpw(newPassword, BCrypt.gensalt());
+    db.execute('UPDATE users SET password_hash = ? WHERE id = ?', [hash, id]);
+    return Response(204);
+  }));
+
   router.patch('/me/username', withAuth(db, jwtSecret, (request, user) async {
     final body = await readJsonBody(request);
     final password = body['password']?.toString();
