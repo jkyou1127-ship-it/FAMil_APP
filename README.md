@@ -160,7 +160,9 @@ Firebase 모드는 PC가 꺼져 있을 때를 위한 **보조 경로**라서, �
 
 ### 처음 설정하기 (저장소 소유자가 한 번만)
 
-1. **서비스 계정 키**: Firebase 콘솔 → 프로젝트 설정 → 서비스 계정에서 키를 생성해 `backend/firebase-service-account.json`으로 저장합니다 (이미 FCM 푸시 알림용으로 설정해두셨다면 같은 파일을 그대로 씁니다). 이 파일은 절대 git에 커밋하지 마세요 — `.gitignore`에 이미 포함되어 있습니다. Windows 배포판(`FAMil_시작.bat`)은 이 파일을 한 번만 넣어두면 `%USERPROFILE%\FAMil_APP\`에 자동으로 복사해두고, 그 뒤로 새 버전을 받아 압축을 풀 때마다 다시 넣지 않아도 알아서 그 자리의 키를 계속 씁니다.
+1. **서비스 계정 키**: Firebase 콘솔 → 프로젝트 설정 → 서비스 계정에서 키를 생성합니다. 이 파일은 절대 git에 커밋하지 마세요 — `.gitignore`에 이미 포함되어 있습니다.
+   - **Windows 배포판**: `FAMil_시작.bat`를 처음 실행하면 아직 키가 없을 때 딱 한 번 키 파일의 경로를 물어봅니다. 입력하면(또는 건너뛰면) 그 뒤로는 다시 묻지 않고, `%USERPROFILE%\FAMil_APP\`에 보관해뒀다가 새 버전을 받아 압축을 풀 때마다 자동으로 그 키를 계속 씁니다. 물론 직접 `backend/firebase-service-account.json`으로 저장해도 똑같이 동작합니다 (이미 FCM 푸시 알림용으로 설정해두셨다면 같은 파일을 그대로 써도 됩니다).
+   - **직접 실행(`npm start`) 환경**: `backend/firebase-service-account.json`에 저장하거나, `backend/.env`에 `FIREBASE_SERVICE_ACCOUNT_PATH=<경로>`를 지정하세요.
 2. **이메일/비밀번호 로그인 사용 설정**: Firebase 콘솔 → Authentication → Sign-in method → "이메일/비밀번호"를 사용함으로 켭니다.
 3. **Firestore 만들기 + 보안 규칙 적용**: Firebase 콘솔 → Firestore Database → 프로덕션 모드로 만들고, 이 저장소의 `firestore.rules` 파일 내용을 콘솔의 "규칙" 탭에 그대로 붙여넣습니다.
 4. **Android**: 이미 `app/android/app/google-services.json`이 있어서 추가 설정 없이 바로 동작합니다.
