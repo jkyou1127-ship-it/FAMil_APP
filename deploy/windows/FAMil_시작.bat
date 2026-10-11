@@ -1,4 +1,8 @@
 @echo off
+chcp 65001 >nul
+rem (this file is saved as UTF-8; chcp 65001 above must run before any line
+rem below containing Korean text, or the console's default codepage - CP949
+rem on Korean Windows - will corrupt those bytes and can break parsing)
 setlocal enabledelayedexpansion
 cd /d "%~dp0backend"
 
