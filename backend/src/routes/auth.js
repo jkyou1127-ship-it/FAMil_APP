@@ -5,6 +5,7 @@ const db = require('../db');
 const { nowIso } = require('../utils/time');
 const { publicUser } = require('../utils/serialize');
 const { authRequired } = require('../middleware/auth');
+const { mirrorCreate } = require('../utils/firebaseAuthMirror');
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ function issueToken(user) {
 }
 
 // 회원가입: 시스템의 "첫" 계정은 자동으로 관리자 계정이 된다.
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
   const { username, password, displayName } = req.body || {};
   if (!username || !password || !displayName) {
     return res.status(400).json({ error: '아이디, 비밀번호, 이름을 모두 입력해주세요.' });
@@ -32,12 +33,17 @@ router.post('/register', (req, res) => {
   const passwordHash = bcrypt.hashSync(password, 10);
   const createdAt = nowIso();
 
+  // PC가 꺼져 있을 때도 Firebase 모드로 같은 아이디/비밀번호로 로그인할 수
+  // 있도록, 계정을 Firebase Authentication에도 함께 만들어둔다(설정 안 돼
+  // 있으면 조용히 건너뛴다 — PC 모드 회원가입 자체는 영향 없음).
+  const firebaseUid = await mirrorCreate(username, password, displayName);
+
   const info = db
     .prepare(
-      `INSERT INTO users (username, password_hash, display_name, is_admin, created_at)
-       VALUES (?, ?, ?, ?, ?)`
+      `INSERT INTO users (username, password_hash, display_name, is_admin, firebase_uid, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`
     )
-    .run(username, passwordHash, displayName, isAdmin, createdAt);
+    .run(username, passwordHash, displayName, isAdmin, firebaseUid, createdAt);
 
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
   const token = issueToken(user);

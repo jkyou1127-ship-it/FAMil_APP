@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
   sleep_sound_enabled INTEGER NOT NULL DEFAULT 1,
   online INTEGER NOT NULL DEFAULT 0,
   room_id INTEGER,
+  firebase_uid TEXT,
   created_at TEXT NOT NULL,
   FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL
 );
@@ -171,6 +172,9 @@ CREATE INDEX IF NOT EXISTS idx_shopping_items_bought ON shopping_items (bought, 
 const userColumns = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
 if (!userColumns.includes('sleep_sound_id')) {
   db.exec("ALTER TABLE users ADD COLUMN sleep_sound_id TEXT NOT NULL DEFAULT 'lullaby1'");
+}
+if (!userColumns.includes('firebase_uid')) {
+  db.exec('ALTER TABLE users ADD COLUMN firebase_uid TEXT');
 }
 
 const roomColumns = db.prepare('PRAGMA table_info(rooms)').all().map((c) => c.name);
