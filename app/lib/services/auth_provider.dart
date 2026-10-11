@@ -78,10 +78,17 @@ class AuthProvider extends ChangeNotifier {
     api.mode = await modeController.resolve(baseUrl);
   }
 
+  /// Firebase 모드(PC가 꺼져 있을 때)로 가입하면 아직 SQLite 계정이 없어서
+  /// 로그인은 되지만 가족 목록/메신저 등은 PC가 켜지고 처음 로그인할 때까지
+  /// 제한된다 (login()의 동기화 로직 참고).
   Future<void> register(String username, String password, String displayName) async {
     await _resolveModeForAuthAttempt();
     if (api.mode == BackendMode.firebase) {
-      throw ApiException('회원가입은 로컬(PC) 서버가 켜져 있을 때만 가능합니다. 같은 Wi-Fi에 연결되어 있는지 확인해주세요.');
+      final user = await firebaseBackend.register(username, password, displayName);
+      currentUser = user;
+      status = AuthStatus.signedIn;
+      notifyListeners();
+      return;
     }
     final res = await api.post('/auth/register', {
       'username': username,
@@ -100,8 +107,28 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    final res = await api.post('/auth/login', {'username': username, 'password': password});
-    await _completeSignIn(res);
+
+    try {
+      final res = await api.post('/auth/login', {'username': username, 'password': password});
+      await _completeSignIn(res);
+    } on ApiException {
+      // 로컬 로그인이 실패했는데, 이 계정이 PC가 꺼져 있던 동안 Firebase
+      // 모드로 가입된 계정일 수 있다 - 그렇다면 지금 이 순간(로컬 서버가
+      // 다시 켜진 시점) 자동으로 SQLite 계정을 만들어 완전히 연동한다.
+      if (!await _trySyncFromFirebase(username, password)) rethrow;
+    }
+  }
+
+  Future<bool> _trySyncFromFirebase(String username, String password) async {
+    final idToken = await firebaseBackend.signInAndGetIdToken(username, password);
+    if (idToken == null) return false;
+    try {
+      final res = await api.post('/auth/sync-firebase-account', {'idToken': idToken, 'password': password});
+      await _completeSignIn(res);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _completeSignIn(Map<String, dynamic> res) async {

@@ -105,6 +105,58 @@ async function deleteUidIndex(uid) {
   }
 }
 
+async function lookupSqlIdByUid(uid) {
+  if (!uid) return null;
+  const firestore = initFirestore();
+  if (!firestore) return null;
+  try {
+    const doc = await firestore.collection('uid_index').doc(uid).get();
+    return doc.exists ? doc.data().sqlId : null;
+  } catch (err) {
+    console.error('Firestore uid_index 조회 실패:', err.message);
+    return null;
+  }
+}
+
+// PC가 꺼져 있는 동안 Firebase 모드로 회원가입하면, 아직 SQLite 정수 id가
+// 없으므로 uid를 문서 id로 하는 이 컬렉션에 임시로 보관해둔다. PC가 다시
+// 켜지고 그 계정으로 처음 로그인을 시도하면(auth.js의 /sync-firebase-account)
+// 그때 실제 SQLite 계정을 만들고 이 문서는 지운다.
+async function readPendingRegistration(uid) {
+  const firestore = initFirestore();
+  if (!firestore) return null;
+  try {
+    const doc = await firestore.collection('pending_registrations').doc(uid).get();
+    return doc.exists ? doc.data() : null;
+  } catch (err) {
+    console.error('Firestore pending_registrations 조회 실패:', err.message);
+    return null;
+  }
+}
+
+async function deletePendingRegistration(uid) {
+  const firestore = initFirestore();
+  if (!firestore) return;
+  try {
+    await firestore.collection('pending_registrations').doc(uid).delete();
+  } catch (err) {
+    console.error('Firestore pending_registrations 삭제 실패:', err.message);
+  }
+}
+
+/** idToken이 유효하면 그 토큰의 Firebase uid를, 아니면 null을 돌려준다. */
+async function verifyIdToken(idToken) {
+  const auth = initFirebaseAuth();
+  if (!auth || !idToken) return null;
+  try {
+    const decoded = await auth.verifyIdToken(idToken);
+    return decoded.uid;
+  } catch (err) {
+    console.error('Firebase idToken 검증 실패:', err.message);
+    return null;
+  }
+}
+
 /** 새 계정을 Firebase Authentication + Firestore 프로필에도 만든다. 실패해도 조용히 무시한다. */
 async function mirrorCreate(sqlId, username, password, displayName, isAdmin) {
   const auth = initFirebaseAuth();
@@ -156,6 +208,14 @@ async function mirrorProfileUpdate(sqlId, fields) {
   await writeProfile(sqlId, fields);
 }
 
+// mirrorCreate와 달리 Firebase Auth 계정은 이미 존재한다(Firebase 모드에서
+// 가입할 때 클라이언트가 직접 만들었다) - 여기서는 그 uid를 새로 만든 SQLite
+// 계정에 연결하는 Firestore 쪽 작업만 한다.
+async function mirrorLinkExisting(sqlId, uid, fields) {
+  await writeProfile(sqlId, { ...fields, firebaseUid: uid });
+  await writeUidIndex(uid, sqlId);
+}
+
 async function mirrorDelete(sqlId, firebaseUid) {
   const auth = initFirebaseAuth();
   if (auth && firebaseUid) {
@@ -181,6 +241,11 @@ module.exports = {
   mirrorPasswordChange,
   mirrorUsernameChange,
   mirrorProfileUpdate,
+  mirrorLinkExisting,
   mirrorDelete,
   syntheticEmail,
+  verifyIdToken,
+  lookupSqlIdByUid,
+  readPendingRegistration,
+  deletePendingRegistration,
 };

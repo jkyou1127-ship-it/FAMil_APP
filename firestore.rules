@@ -32,6 +32,19 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // PC가 꺼져 있을 때 Firebase 모드로 가입하면, 아직 SQLite 정수 id가 없어서
+    // 여기(문서 id = 자기 uid)에 임시로 보관해둔다. PC가 다시 켜지고 로그인을
+    // 시도하면 서버가 SQLite 계정을 만들면서 이 문서를 지운다(Admin SDK라
+    // 규칙과 무관). 아이디 중복 확인을 위해 읽기는 로그인한 사람 전체에게
+    // 열어두되(users 컬렉션과 같은 수준 — username/displayName뿐, 비밀번호는
+    // 여기 전혀 저장하지 않는다), 자기 것 말고는 만들거나 고칠 수 없다.
+    match /pending_registrations/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['username', 'displayName', 'createdAt']);
+      allow update, delete: if false;
+    }
+
     // 1:1 매신저. 문서 id가 "작은id_큰id" 형식이라는 걸 신뢰하지 않고, 저장된
     // participantIds에 요청자가 포함돼 있는지로만 판단한다.
     match /direct_messages/{pairKey} {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/backend_mode.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_provider.dart';
 
@@ -34,11 +35,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _error = null;
     });
     try {
+      final api = context.read<ApiClient>();
       await context.read<AuthProvider>().register(
             _usernameController.text.trim(),
             _passwordController.text,
             _displayNameController.text.trim(),
           );
+      // PC가 꺼져 있어서 Firebase 모드로 가입한 경우, 완전히 연동되기 전까지
+      // 가족 목록/메신저 등이 제한된다는 걸 바로 알려준다 - register()가
+      // 성공하면 곧 화면이 HomeShell로 바뀌므로, 그 전에 한 번만 띄운다.
+      if (mounted && api.mode == BackendMode.firebase) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('가입 완료'),
+            content: const Text(
+              '지금은 PC 서버가 꺼져 있어서 Firebase로 가입되었습니다.\n'
+              '로그인은 바로 되지만, 가족 목록에 보이거나 메신저를 쓰려면 '
+              'PC 서버가 켜진 뒤 한 번 더 로그인해주세요 — 그때 자동으로 완전히 연동됩니다.',
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('확인')),
+            ],
+          ),
+        );
+      }
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } catch (e) {

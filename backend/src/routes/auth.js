@@ -5,7 +5,15 @@ const db = require('../db');
 const { nowIso } = require('../utils/time');
 const { publicUser } = require('../utils/serialize');
 const { authRequired } = require('../middleware/auth');
-const { mirrorCreate } = require('../utils/firebaseAuthMirror');
+const { broadcastStatus } = require('../sockets/io');
+const {
+  mirrorCreate,
+  mirrorLinkExisting,
+  verifyIdToken,
+  lookupSqlIdByUid,
+  readPendingRegistration,
+  deletePendingRegistration,
+} = require('../utils/firebaseAuthMirror');
 
 const router = express.Router();
 
@@ -70,6 +78,65 @@ router.post('/login', (req, res) => {
 
 router.get('/me', authRequired, (req, res) => {
   res.json({ user: publicUser(req.user) });
+});
+
+// PC가 꺼져 있는 동안 Firebase 모드로 가입한 계정을, PC가 다시 켜지고 처음
+// 로그인을 시도할 때 실제 SQLite 계정으로 만들어 넣는다. idToken으로
+// "이 사람이 정말 그 Firebase 계정의 주인인지"를 서버가 직접 검증하므로,
+// 비밀번호는 이 요청에서만 잠깐 쓰이고(로컬 비밀번호 해시를 만드는 용도) 어디에도
+// 평문으로 저장되지 않는다.
+router.post('/sync-firebase-account', async (req, res) => {
+  const { idToken, password } = req.body || {};
+  if (!idToken || !password) {
+    return res.status(400).json({ error: 'idToken과 password가 필요합니다.' });
+  }
+
+  const uid = await verifyIdToken(idToken);
+  if (!uid) {
+    return res.status(401).json({ error: 'Firebase 인증 정보가 유효하지 않습니다.' });
+  }
+
+  // 이미 한 번 동기화된 계정이면(재시도 등) 그냥 기존 계정으로 로그인시킨다.
+  const existingSqlId = await lookupSqlIdByUid(uid);
+  if (existingSqlId) {
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(existingSqlId);
+    if (user) {
+      const token = issueToken(user);
+      return res.json({ token, user: publicUser(user) });
+    }
+  }
+
+  const pending = await readPendingRegistration(uid);
+  if (!pending) {
+    return res.status(404).json({ error: '대기 중인 Firebase 가입 정보를 찾을 수 없습니다.' });
+  }
+
+  // 그 사이 같은 아이디가 로컬에도 생겼을 수 있으니, 겹치면 뒤에 번호를 붙인다.
+  let username = pending.username;
+  let suffix = 1;
+  while (db.prepare('SELECT id FROM users WHERE username = ?').get(username)) {
+    suffix += 1;
+    username = `${pending.username}_${suffix}`;
+  }
+  const displayName = pending.displayName || username;
+  const passwordHash = bcrypt.hashSync(String(password), 10);
+  const createdAt = nowIso();
+
+  const info = db
+    .prepare(
+      `INSERT INTO users (username, password_hash, display_name, is_admin, firebase_uid, created_at)
+       VALUES (?, ?, ?, 0, ?, ?)`
+    )
+    .run(username, passwordHash, displayName, uid, createdAt);
+  const id = info.lastInsertRowid;
+
+  await mirrorLinkExisting(id, uid, { id, username, displayName, isAdmin: false, profilePhoto: null });
+  await deletePendingRegistration(uid);
+
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+  const token = issueToken(user);
+  broadcastStatus();
+  res.status(201).json({ token, user: publicUser(user) });
 });
 
 module.exports = router;

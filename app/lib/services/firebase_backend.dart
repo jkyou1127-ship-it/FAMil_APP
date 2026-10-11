@@ -17,8 +17,14 @@ import 'api_exception.dart';
 class FirebaseBackend {
   bool? _available;
   int? _sqlId;
+  String? _pendingUsername;
 
   int? get currentSqlId => _sqlId;
+
+  /// register()로 Firebase 모드에서 막 가입했지만, 아직 PC 서버가 SQLite
+  /// 계정으로 동기화해주지 않아서 로그인/제한된 기능만 쓸 수 있는 상태라면
+  /// 그 아이디를 돌려준다. 동기화가 끝나면(다른 기기에서 로그인해도) null이 된다.
+  String? get pendingUsername => _pendingUsername;
 
   Future<bool> ensureInitialized() async {
     if (_available != null) return _available!;
@@ -71,6 +77,7 @@ class FirebaseBackend {
 
   Future<void> logout() async {
     _sqlId = null;
+    _pendingUsername = null;
     if (_available == true) {
       await FirebaseAuth.instance.signOut();
     }
@@ -83,7 +90,88 @@ class FirebaseBackend {
     final profileDoc = await FirebaseFirestore.instance.collection('users').doc(sqlId.toString()).get();
     if (!profileDoc.exists) return null;
     _sqlId = sqlId;
+    _pendingUsername = null;
     return AppUser.fromJson(_profileJson(sqlId, profileDoc.data()!));
+  }
+
+  /// PC가 꺼져 있을 때 Firebase 모드로 회원가입한다. 아직 SQLite 쪽에는
+  /// 계정이 없어서(그래서 id가 없다 - 음수 -1을 "동기화 전" 표시로 쓴다),
+  /// PC가 켜지고 처음 로그인할 때 자동으로 완전히 연동된다. 그 전까지는
+  /// 로그인은 되지만 가족 목록에 보이거나 메신저를 쓸 수는 없다.
+  Future<AppUser> register(String username, String password, String displayName) async {
+    if (!await ensureInitialized()) {
+      throw ApiException('이 플랫폼에는 Firebase가 설정되어 있지 않습니다.');
+    }
+    final trimmed = username.trim();
+    if (await _usernameTaken(trimmed)) {
+      throw ApiException('이미 사용 중인 아이디입니다.');
+    }
+
+    UserCredential cred;
+    try {
+      cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _syntheticEmail(trimmed),
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw ApiException(_mapAuthError(e));
+    }
+
+    final now = DateTime.now().toUtc().toIso8601String();
+    try {
+      await FirebaseFirestore.instance.collection('pending_registrations').doc(cred.user!.uid).set({
+        'username': trimmed,
+        'displayName': displayName,
+        'createdAt': now,
+      });
+    } catch (_) {
+      throw ApiException('가입 정보를 저장하지 못했습니다. 인터넷 연결을 확인해주세요.');
+    }
+
+    _pendingUsername = trimmed;
+    return AppUser(
+      id: -1,
+      username: trimmed,
+      displayName: displayName,
+      isAdmin: false,
+      profilePhoto: null,
+      sleepStatus: 'awake',
+      sleepSoundEnabled: true,
+      sleepSoundId: 'lullaby1',
+      online: false,
+      roomId: null,
+      createdAt: now,
+    );
+  }
+
+  Future<bool> _usernameTaken(String username) async {
+    final usersSnap =
+        await FirebaseFirestore.instance.collection('users').where('username', isEqualTo: username).limit(1).get();
+    if (usersSnap.docs.isNotEmpty) return true;
+    final pendingSnap = await FirebaseFirestore.instance
+        .collection('pending_registrations')
+        .where('username', isEqualTo: username)
+        .limit(1)
+        .get();
+    return pendingSnap.docs.isNotEmpty;
+  }
+
+  /// 로컬(PC) 서버가 다시 켜졌을 때, Firebase에만 있던 계정을 그 서버로
+  /// 옮기기 위해 쓰는 신원 증명서(idToken)를 받아온다. 비밀번호가 맞아야만
+  /// Firebase가 토큰을 내준다. AuthProvider가 이걸 `/auth/sync-firebase-account`로
+  /// 보내서 로컬 계정을 만든다 - 성공/실패와 무관하게 이 메서드 자체는 로그인
+  /// 상태(_sqlId)를 바꾸지 않는다.
+  Future<String?> signInAndGetIdToken(String username, String password) async {
+    if (!await ensureInitialized()) return null;
+    try {
+      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _syntheticEmail(username),
+        password: password,
+      );
+      return await cred.user!.getIdToken();
+    } catch (_) {
+      return null;
+    }
   }
 
   String _mapAuthError(FirebaseAuthException e) {
