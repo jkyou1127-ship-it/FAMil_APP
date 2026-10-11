@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -29,21 +27,8 @@ class _BackupServerScreenState extends State<BackupServerScreen> {
     context.read<LocalServerController>().loadSavedSnapshotMeta();
   }
 
-  Future<String?> _resolveLocalAddress(int port) async {
-    try {
-      final interfaces = await NetworkInterface.list(type: InternetAddressType.IPv4, includeLoopback: false);
-      for (final iface in interfaces) {
-        for (final addr in iface.addresses) {
-          if (!addr.isLoopback && !addr.address.startsWith('169.254')) {
-            return 'http://${addr.address}:$port';
-          }
-        }
-      }
-    } catch (_) {
-      // 주소를 못 가져와도 서버 자체는 계속 동작한다 — 자동 감지로 여전히 찾을 수 있다.
-    }
-    return null;
-  }
+  Future<String?> _resolveLocalAddress(int port) =>
+      context.read<LocalServerController>().resolveLocalAddress(port);
 
   Future<void> _downloadSnapshot() async {
     setState(() => _busy = true);
