@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/backend_mode.dart';
 import '../../models/message.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_provider.dart';
+import '../../services/firebase_backend.dart';
 import '../../services/socket_service.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -93,6 +95,21 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     _controller.clear();
+
+    // Firebase 모드에는 실시간 소켓이 없으므로, Firestore에 직접 쓰고 나서
+    // 대화 내용을 다시 불러온다(새 메시지는 새로고침 시점에 보인다).
+    if (context.read<ApiClient>().mode == BackendMode.firebase) {
+      context.read<FirebaseBackend>().sendDirectMessage(widget.partnerId, text).then((_) {
+        if (mounted) _load();
+      }).catchError((err) {
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(err is ApiException ? err.message : '메시지를 보내지 못했습니다.')));
+        }
+      });
+      return;
+    }
+
     _socket.emit('message:send', {'receiverId': widget.partnerId, 'content': text}, (response) {
       final map = response is Map ? Map<String, dynamic>.from(response) : <String, dynamic>{};
       if (map['error'] != null && mounted) {

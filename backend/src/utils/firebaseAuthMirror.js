@@ -79,6 +79,32 @@ async function writeProfile(sqlId, fields) {
   }
 }
 
+// Flutter 클라이언트가 Firebase Auth 로그인 직후 "내 SQLite id가 몇 번이지?"를
+// 쿼리 없이 바로 알 수 있도록, uid -> sqlId 역매핑도 함께 보관한다. 이게 있으면
+// Firestore 보안 규칙도 users 컬렉션을 스캔하지 않고 간단한 문서 조회로 "이
+// 요청자가 본인 데이터에 접근하는지"를 검증할 수 있다.
+async function writeUidIndex(uid, sqlId) {
+  if (!uid) return;
+  const firestore = initFirestore();
+  if (!firestore) return;
+  try {
+    await firestore.collection('uid_index').doc(uid).set({ sqlId });
+  } catch (err) {
+    console.error('Firestore uid_index 동기화 실패:', err.message);
+  }
+}
+
+async function deleteUidIndex(uid) {
+  if (!uid) return;
+  const firestore = initFirestore();
+  if (!firestore) return;
+  try {
+    await firestore.collection('uid_index').doc(uid).delete();
+  } catch (err) {
+    console.error('Firestore uid_index 삭제 실패:', err.message);
+  }
+}
+
 /** 새 계정을 Firebase Authentication + Firestore 프로필에도 만든다. 실패해도 조용히 무시한다. */
 async function mirrorCreate(sqlId, username, password, displayName, isAdmin) {
   const auth = initFirebaseAuth();
@@ -99,6 +125,7 @@ async function mirrorCreate(sqlId, username, password, displayName, isAdmin) {
     profilePhoto: null,
     firebaseUid: uid,
   });
+  await writeUidIndex(uid, sqlId);
   return uid;
 }
 
@@ -146,6 +173,7 @@ async function mirrorDelete(sqlId, firebaseUid) {
       console.error('Firestore 프로필 삭제 미러링 실패:', err.message);
     }
   }
+  await deleteUidIndex(firebaseUid);
 }
 
 module.exports = {

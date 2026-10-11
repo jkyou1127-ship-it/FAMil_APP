@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'services/alarm_scheduler.dart';
 import 'services/api_client.dart';
 import 'services/auth_provider.dart';
+import 'services/backend_mode_controller.dart';
+import 'services/firebase_backend.dart';
 import 'services/kst_time.dart';
 import 'services/local_notifications_service.dart';
 import 'services/local_server_controller.dart';
@@ -40,13 +42,23 @@ class _FamilAppState extends State<FamilApp> {
   late final PushService _pushService;
   late final ThemeController _themeController;
   late final LocalServerController _localServerController;
+  late final FirebaseBackend _firebaseBackend;
+  late final BackendModeController _modeController;
 
   @override
   void initState() {
     super.initState();
     _api = ApiClient(baseUrl: ServerConfigService.defaultUrl);
     _socket = SocketService();
-    _auth = AuthProvider(api: _api, socket: _socket);
+    _firebaseBackend = FirebaseBackend();
+    _modeController = BackendModeController(firebaseBackend: _firebaseBackend);
+    _api.firebaseBackend = _firebaseBackend;
+    _auth = AuthProvider(
+      api: _api,
+      socket: _socket,
+      firebaseBackend: _firebaseBackend,
+      modeController: _modeController,
+    );
     _localNotifications = LocalNotificationsService();
     _alarmScheduler = AlarmScheduler(localNotifications: _localNotifications);
     _pushService = PushService(localNotifications: _localNotifications);
@@ -68,6 +80,8 @@ class _FamilAppState extends State<FamilApp> {
         Provider<PushService>.value(value: _pushService),
         ChangeNotifierProvider<ThemeController>.value(value: _themeController),
         ChangeNotifierProvider<LocalServerController>.value(value: _localServerController),
+        Provider<FirebaseBackend>.value(value: _firebaseBackend),
+        ChangeNotifierProvider<BackendModeController>.value(value: _modeController),
       ],
       child: Consumer<ThemeController>(
         builder: (context, themeController, _) => MaterialApp(

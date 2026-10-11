@@ -1,0 +1,53 @@
+rules_version = '2';
+
+// FAMil APP의 Firebase 모드(로컬 PC 서버가 꺼져 있을 때 쓰는 보조 경로)가
+// 쓰는 Firestore 구조에 대한 보안 규칙이다. 자세한 배경은 README.md의
+// "Firebase 모드" 절을 참고. backend/src/utils/firebaseAuthMirror.js가 Admin
+// SDK로 쓰는 users/uid_index 문서는 Admin SDK가 규칙을 우회하므로 영향이
+// 없고, 여기서는 "클라이언트(Flutter 앱)가 직접 무엇을 할 수 있는가"만 막는다.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // uid_index/{uid} 문서에서 로그인한 사용자의 SQLite 정수 id를 찾는다.
+    // 문서가 없으면(아직 PC 서버에서 미러링되지 않은 계정) 접근이 전부 막힌다.
+    function mySqlId() {
+      return get(/databases/$(database)/documents/uid_index/$(request.auth.uid)).data.sqlId;
+    }
+
+    // 가족 프로필: 로그인한 사람이면 누구나 전체 목록을 읽을 수 있다 (상태창,
+    // 매신저 상대 선택에 필요). 계정 생성/변경/삭제는 PC 서버의 Admin SDK만
+    // 수행하므로, 클라이언트 쓰기는 항상 막는다.
+    match /users/{sqlId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Firebase Auth uid -> SQLite id 역매핑. 본인 것만 읽을 수 있으면 충분하다.
+    match /uid_index/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // 1:1 매신저. 문서 id가 "작은id_큰id" 형식이라는 걸 신뢰하지 않고, 저장된
+    // participantIds에 요청자가 포함돼 있는지로만 판단한다.
+    match /direct_messages/{pairKey} {
+      allow read: if isSignedIn() && mySqlId() in resource.data.participantIds;
+      allow create, update: if isSignedIn() && mySqlId() in request.resource.data.participantIds;
+      allow delete: if false;
+
+      match /items/{itemId} {
+        function pairAllowsMe() {
+          return mySqlId() in get(/databases/$(database)/documents/direct_messages/$(pairKey)).data.participantIds;
+        }
+
+        allow read: if isSignedIn() && pairAllowsMe();
+        allow create: if isSignedIn() && pairAllowsMe() && request.resource.data.senderId == mySqlId();
+        allow update, delete: if false;
+      }
+    }
+  }
+}
