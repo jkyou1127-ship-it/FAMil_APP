@@ -33,19 +33,24 @@ router.post('/register', async (req, res) => {
   const passwordHash = bcrypt.hashSync(password, 10);
   const createdAt = nowIso();
 
-  // PC가 꺼져 있을 때도 Firebase 모드로 같은 아이디/비밀번호로 로그인할 수
-  // 있도록, 계정을 Firebase Authentication에도 함께 만들어둔다(설정 안 돼
-  // 있으면 조용히 건너뛴다 — PC 모드 회원가입 자체는 영향 없음).
-  const firebaseUid = await mirrorCreate(username, password, displayName);
-
   const info = db
     .prepare(
-      `INSERT INTO users (username, password_hash, display_name, is_admin, firebase_uid, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO users (username, password_hash, display_name, is_admin, created_at)
+       VALUES (?, ?, ?, ?, ?)`
     )
-    .run(username, passwordHash, displayName, isAdmin, firebaseUid, createdAt);
+    .run(username, passwordHash, displayName, isAdmin, createdAt);
+  const id = info.lastInsertRowid;
 
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
+  // PC가 꺼져 있을 때도 Firebase 모드로 같은 아이디/비밀번호로 로그인하고
+  // 가족 목록을 볼 수 있도록, 계정을 Firebase Authentication + Firestore
+  // 프로필에도 함께 만들어둔다(설정 안 돼 있으면 조용히 건너뛴다 — PC 모드
+  // 회원가입 자체는 영향 없음).
+  const firebaseUid = await mirrorCreate(id, username, password, displayName, isAdmin);
+  if (firebaseUid) {
+    db.prepare('UPDATE users SET firebase_uid = ? WHERE id = ?').run(firebaseUid, id);
+  }
+
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   const token = issueToken(user);
   res.status(201).json({ token, user: publicUser(user) });
 });

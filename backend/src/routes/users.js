@@ -8,7 +8,7 @@ const { nowIso } = require('../utils/time');
 const { publicUser } = require('../utils/serialize');
 const { authRequired, adminRequired } = require('../middleware/auth');
 const { broadcastStatus } = require('../sockets/io');
-const { mirrorPasswordChange, mirrorUsernameChange, mirrorDelete } = require('../utils/firebaseAuthMirror');
+const { mirrorPasswordChange, mirrorUsernameChange, mirrorProfileUpdate, mirrorDelete } = require('../utils/firebaseAuthMirror');
 
 const router = express.Router();
 
@@ -35,13 +35,12 @@ router.get('/', authRequired, (req, res) => {
   res.json({ users });
 });
 
-router.patch('/me', authRequired, (req, res) => {
+router.patch('/me', authRequired, async (req, res) => {
   const { displayName } = req.body || {};
-  if (displayName && String(displayName).trim()) {
-    db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(
-      String(displayName).trim(),
-      req.user.id
-    );
+  const trimmedName = displayName && String(displayName).trim();
+  if (trimmedName) {
+    db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(trimmedName, req.user.id);
+    await mirrorProfileUpdate(req.user.id, { displayName: trimmedName });
   }
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   broadcastStatus();
@@ -113,7 +112,7 @@ router.patch('/me/username', authRequired, async (req, res) => {
   if (existing) return res.status(409).json({ error: '이미 사용 중인 아이디입니다.' });
 
   db.prepare('UPDATE users SET username = ? WHERE id = ?').run(trimmed, req.user.id);
-  await mirrorUsernameChange(req.user.firebase_uid, trimmed);
+  await mirrorUsernameChange(req.user.id, req.user.firebase_uid, trimmed);
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   res.json({ user: publicUser(user) });
 });
@@ -151,7 +150,7 @@ router.delete('/me', authRequired, async (req, res) => {
   }
 
   db.prepare('DELETE FROM users WHERE id = ?').run(req.user.id);
-  await mirrorDelete(req.user.firebase_uid);
+  await mirrorDelete(req.user.id, req.user.firebase_uid);
 
   broadcastStatus();
   res.status(204).end();
