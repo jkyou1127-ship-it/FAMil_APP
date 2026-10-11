@@ -1,8 +1,4 @@
 @echo off
-chcp 65001 >nul
-rem (this file is saved as UTF-8; chcp 65001 above must run before any line
-rem below containing Korean text, or the console's default codepage - CP949
-rem on Korean Windows - will corrupt those bytes and can break parsing)
 setlocal enabledelayedexpansion
 cd /d "%~dp0backend"
 
@@ -20,10 +16,10 @@ if not exist ".env" (
 if not exist "data" mkdir data
 if not exist "uploads\profiles" mkdir uploads\profiles
 
-rem firebase-service-account.json은 민감한 키라 설치 zip에는 들어있지 않다.
-rem 버전을 새로 받을 때마다 다시 넣어야 하는 불편을 없애려고, 한 번만 이
-rem 폴더에 넣어두면(또는 최초 설치 시 아래 안내에 따라 한 번만 입력하면)
-rem 업데이트와 무관하게 항상 같은 자리에 보관해두고 그걸 계속 쓴다.
+rem firebase-service-account.json is a real credential and is never shipped
+rem in the install zip. To avoid asking for it again on every update, keep
+rem it in a fixed folder outside this (possibly version-specific) folder and
+rem reuse it from there every time.
 set "FAMIL_DATA_DIR=%USERPROFILE%\FAMil_APP"
 if not exist "%FAMIL_DATA_DIR%" mkdir "%FAMIL_DATA_DIR%" >nul 2>nul
 set "FAMIL_KEY=%FAMIL_DATA_DIR%\firebase-service-account.json"
@@ -34,43 +30,44 @@ if exist "%FAMIL_KEY%" goto :firebase_key_done
 if exist "%FAMIL_DATA_DIR%\firebase-skip.flag" goto :firebase_key_done
 
 echo.
-echo [선택] Firebase 서비스 계정 키가 아직 없습니다. PC가 꺼져 있을 때도
-echo        로그인/상태창/매신저를 쓰거나, 푸시 알림을 받으려면 필요해요.
-echo        지금 설정하려면 Firebase 콘솔에서 받은 키 파일(.json)의 전체
-echo        경로를 아래에 붙여넣고 Enter를 누르세요. 지금 넘어가려면 그냥
-echo        Enter만 누르면 되고, 나중에 다시 묻지 않습니다.
+echo [Optional] No Firebase service account key found yet.
+echo It is only needed for push notifications and for login/status/
+echo messenger to still work while the PC is turned off.
+echo Paste the full path to the key file (.json) from the Firebase
+echo console and press Enter, or just press Enter to skip for now.
+echo (You will not be asked again either way.)
 set "FAMIL_KEY_INPUT="
-set /p "FAMIL_KEY_INPUT=키 파일 경로: "
+set /p "FAMIL_KEY_INPUT=Key file path: "
 
 if not defined FAMIL_KEY_INPUT (
   echo. > "%FAMIL_DATA_DIR%\firebase-skip.flag"
-  echo 건너뛰었습니다. 나중에 쓰려면 "%FAMIL_DATA_DIR%" 폴더에
-  echo firebase-service-account.json 파일을 직접 넣어주세요.
+  echo Skipped. You can add it later by placing firebase-service-account.json
+  echo directly in "%FAMIL_DATA_DIR%".
   goto :firebase_key_done
 )
 
 set FAMIL_KEY_INPUT=!FAMIL_KEY_INPUT:"=!
 if not exist "!FAMIL_KEY_INPUT!" (
-  echo 그 경로에서 파일을 찾을 수 없어 건너뜁니다.
+  echo Could not find a file at that path, skipping.
   goto :firebase_key_done
 )
 
 findstr /C:"service_account" "!FAMIL_KEY_INPUT!" >nul 2>nul
 if errorlevel 1 (
-  echo 그 파일은 Firebase 서비스 계정 키처럼 보이지 않아 건너뜁니다.
+  echo That file does not look like a Firebase service account key, skipping.
   goto :firebase_key_done
 )
 
 copy /Y "!FAMIL_KEY_INPUT!" "%FAMIL_KEY%" >nul 2>nul
-echo 저장했습니다. 다음부터는 자동으로 이 키를 사용합니다.
+echo Saved. This key will be used automatically from now on.
 
 :firebase_key_done
 if exist "%FAMIL_KEY%" set "FIREBASE_SERVICE_ACCOUNT_PATH=%FAMIL_KEY%"
 
-echo FAMil 백엔드 서버를 시작합니다...
+echo Starting the FAMil backend server...
 start "FAMil Backend" /min "%~dp0node\node.exe" src\server.js
 
 timeout /t 2 /nobreak >nul
 
-echo FAMil APP을 실행합니다...
+echo Starting the FAMil app...
 start "" "%~dp0app\famil_app.exe"
