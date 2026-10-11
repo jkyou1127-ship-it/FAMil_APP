@@ -9,6 +9,9 @@ on:
 env:
   FLUTTER_VERSION: "3.44.9"
 
+permissions:
+  contents: read
+
 jobs:
   analyze-and-test:
     runs-on: ubuntu-latest
@@ -93,3 +96,37 @@ jobs:
           name: famil-app-windows
           path: dist/**
           if-no-files-found: error
+
+  build-web:
+    needs: analyze-and-test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - run: flutter pub get
+      # GitHub Pages가 프로젝트 페이지(사용자/저장소 하위 경로)로 서빙하므로
+      # base-href를 저장소 이름에 맞춰줘야 에셋 경로가 깨지지 않는다.
+      - run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/build/web
+
+  deploy-web:
+    if: github.ref == 'refs/heads/main'
+    needs: build-web
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
